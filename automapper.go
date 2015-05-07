@@ -5,7 +5,9 @@
 // package can help converting from one type to another.
 package automapper
 
-import "reflect"
+import (
+	"reflect"
+)
 
 // Map fills out the fields in dest with values from source. All fields in the
 // destination object must exist in the source object.
@@ -47,7 +49,7 @@ func mapValues(sourceVal, destVal reflect.Value) {
 		if sourceVal.Type().Kind() == reflect.Ptr {
 			if sourceVal.IsNil() {
 				// If source is nil, it maps to an empty struct
-				return
+				sourceVal = reflect.New(sourceVal.Type().Elem())
 			}
 			sourceVal = sourceVal.Elem()
 		}

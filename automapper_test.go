@@ -1,8 +1,10 @@
 package automapper
 
 import (
-	"github.com/stretchr/testify/assert"
+	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPanicWhenDestIsNotPointer(t *testing.T) {
@@ -113,6 +115,52 @@ func TestWithPointerFieldsNil(t *testing.T) {
 	Map(&source, &dest)
 	assert.NotNil(t, dest.Foo)
 	assert.Equal(t, 42, dest.Foo.Foo)
+}
+
+func TestMapFromPointerToNonPointerTypeWithData(t *testing.T) {
+	source := struct {
+		Foo *SourceTypeA
+	}{}
+	dest := struct {
+		Foo DestTypeA
+	}{}
+	source.Foo = &SourceTypeA{Foo: 42}
+
+	Map(&source, &dest)
+	assert.NotNil(t, dest.Foo)
+	assert.Equal(t, 42, dest.Foo.Foo)
+}
+
+func TestMapFromPointerToNonPointerTypeWithoutData(t *testing.T) {
+	source := struct {
+		Foo *SourceTypeA
+	}{}
+	dest := struct {
+		Foo DestTypeA
+	}{}
+	source.Foo = nil
+
+	Map(&source, &dest)
+	assert.NotNil(t, dest.Foo)
+	assert.Equal(t, 0, dest.Foo.Foo)
+}
+
+func TestMapFromPointerToNonPointerTypeWithoutDataAndIncompatibleType(t *testing.T) {
+	fmt.Println("START!!!!")
+	defer func() { recover() }()
+	// Just make sure we stil panic
+	source := struct {
+		Foo *SourceTypeA
+	}{}
+	dest := struct {
+		Foo struct {
+			Baz string
+		}
+	}{}
+	source.Foo = nil
+
+	Map(&source, &dest)
+	t.Error("Should have panicked")
 }
 
 func TestWhenUsingIncompatibleTypes(t *testing.T) {
