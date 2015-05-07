@@ -41,28 +41,29 @@ func Map(source, dest interface{}) {
 
 func mapValues(sourceVal, destVal reflect.Value) {
 	destType := destVal.Type()
-	for i := 0; i < destVal.NumField(); i++ {
-		fieldName := destType.Field(i).Name
-		sourceField := sourceVal.FieldByName(fieldName)
-		destField := destVal.Field(i)
-		if destType.Field(i).Anonymous {
-			mapValues(sourceVal, destField)
-			continue
-		}
-		destFieldType := destField.Type()
-		if destFieldType == sourceField.Type() {
-			destField.Set(sourceField)
-		} else if destFieldType.Kind() == reflect.Slice {
-			length := sourceField.Len()
-			target := reflect.MakeSlice(destFieldType, length, length)
-			for j := 0; j < length; j++ {
-				val := reflect.New(destFieldType.Elem()).Elem()
-				mapValues(sourceField.Index(j), val)
-				target.Index(j).Set(val)
+	if destType.Kind() == reflect.Struct {
+		for i := 0; i < destVal.NumField(); i++ {
+			fieldName := destType.Field(i).Name
+			sourceField := sourceVal.FieldByName(fieldName)
+			destField := destVal.Field(i)
+			if destType.Field(i).Anonymous {
+				mapValues(sourceVal, destField)
+				continue
 			}
-			destField.Set(target)
-		} else {
 			mapValues(sourceField, destField)
 		}
+	} else if destType == sourceVal.Type() {
+		destVal.Set(sourceVal)
+	} else if destType.Kind() == reflect.Slice {
+		length := sourceVal.Len()
+		target := reflect.MakeSlice(destType, length, length)
+		for j := 0; j < length; j++ {
+			val := reflect.New(destType.Elem()).Elem()
+			mapValues(sourceVal.Index(j), val)
+			target.Index(j).Set(val)
+		}
+		destVal.Set(target)
+	} else {
+		panic("Currently not supported")
 	}
 }
