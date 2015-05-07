@@ -59,6 +59,23 @@ func TestWithSliceTypes(t *testing.T) {
 	assert.Equal(t, 2, dest.Children[1].Foo)
 }
 
+func TestWithUnnamedFields(t *testing.T) {
+	source := struct {
+		Baz string
+		SourceTypeA
+	}{}
+	dest := struct {
+		Baz string
+		DestTypeA
+	}{}
+	source.Baz = "Baz"
+	source.SourceTypeA.Foo = 42
+
+	Map(&source, &dest)
+	assert.Equal(t, "Baz", dest.Baz)
+	assert.Equal(t, 42, dest.DestTypeA.Foo)
+}
+
 type SourceTypeA struct {
 	Foo int
 	Bar string

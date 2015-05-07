@@ -26,6 +26,10 @@ func mapValues(sourceVal, destVal reflect.Value) {
 		fieldName := destType.Field(i).Name
 		sourceField := sourceVal.FieldByName(fieldName)
 		destField := destVal.Field(i)
+		if destType.Field(i).Anonymous {
+			mapValues(sourceVal, destField)
+			continue
+		}
 		destFieldType := destField.Type()
 		fmt.Printf("Field %s. Type %s, IsArray: %v\n", fieldName, destFieldType, destFieldType.Kind() == reflect.Slice)
 		if destFieldType == sourceField.Type() {
