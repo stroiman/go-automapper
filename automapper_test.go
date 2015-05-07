@@ -23,6 +23,12 @@ func TestDestinationIsUpdatedFromSource(t *testing.T) {
 	assert.Equal(t, 42, dest.Foo)
 }
 
+func TestDestinationIsUpdatedFromSourceWhenSourcePassedAsPtr(t *testing.T) {
+	source, dest := SourceTypeA{42}, DestTypeA{}
+	MustMap(&source, &dest)
+	assert.Equal(t, 42, dest.Foo)
+}
+
 type SourceTypeA struct {
 	Foo int
 }

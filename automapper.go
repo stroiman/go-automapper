@@ -11,6 +11,9 @@ func Map(source, dest interface{}) error {
 		return errors.New("Dest must be a pointer type")
 	}
 	var sourceVal = reflect.ValueOf(source)
+	if sourceVal.Type().Kind() == reflect.Ptr {
+		sourceVal = sourceVal.Elem()
+	}
 	var destVal = reflect.ValueOf(dest).Elem()
 	destVal.Field(0).Set(sourceVal.Field(0))
 	return nil
