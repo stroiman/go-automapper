@@ -17,6 +17,12 @@ func TestDestinationNotPassedAsPointer(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestDestinationIsUpdatedFromSource(t *testing.T) {
+	source, dest := SourceTypeA{42}, DestTypeA{}
+	MustMap(source, &dest)
+	assert.Equal(t, 42, dest.Foo)
+}
+
 type SourceTypeA struct {
 	Foo int
 }
