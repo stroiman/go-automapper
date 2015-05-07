@@ -26,6 +26,23 @@ func TestDestinationIsUpdatedFromSourceWhenSourcePassedAsPtr(t *testing.T) {
 	assert.Equal(t, "Bar", dest.Bar)
 }
 
+func TestWithNestedTypes(t *testing.T) {
+	source := struct {
+		Baz   string
+		Child SourceTypeA
+	}{}
+	dest := struct {
+		Baz   string
+		Child DestTypeA
+	}{}
+
+	source.Baz = "Baz"
+	source.Child.Bar = "Bar"
+	Map(&source, &dest)
+	assert.Equal(t, "Baz", dest.Baz)
+	assert.Equal(t, "Bar", dest.Child.Bar)
+}
+
 type SourceTypeA struct {
 	Foo int
 	Bar string

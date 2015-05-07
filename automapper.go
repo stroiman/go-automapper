@@ -13,11 +13,20 @@ func Map(source, dest interface{}) {
 	if sourceVal.Type().Kind() == reflect.Ptr {
 		sourceVal = sourceVal.Elem()
 	}
-	destType = destType.Elem()
 	var destVal = reflect.ValueOf(dest).Elem()
+	mapValues(sourceVal, destVal)
+}
+
+func mapValues(sourceVal, destVal reflect.Value) {
+	destType := destVal.Type()
 	for i := 0; i < destVal.NumField(); i++ {
 		fieldName := destType.Field(i).Name
-		value := sourceVal.FieldByName(fieldName)
-		destVal.Field(i).Set(value)
+		sourceField := sourceVal.FieldByName(fieldName)
+		destField := destVal.Field(i)
+		if destField.Type() == sourceField.Type() {
+			destField.Set(sourceField)
+		} else {
+			mapValues(sourceField, destField)
+		}
 	}
 }
