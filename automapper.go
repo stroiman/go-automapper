@@ -60,7 +60,7 @@ func mapValues(sourceVal, destVal reflect.Value) {
 	} else if destType == sourceVal.Type() {
 		destVal.Set(sourceVal)
 	} else if destType.Kind() == reflect.Ptr {
-		if sourceVal.Type().Kind() == reflect.Ptr && sourceVal.IsNil() {
+		if valueIsNil(sourceVal) {
 			return
 		}
 		val := reflect.New(destType.Elem())
@@ -84,25 +84,35 @@ func mapField(source, destVal reflect.Value, i int) {
 	destType := destVal.Type()
 	fieldName := destType.Field(i).Name
 	defer func() {
-		r := recover()
-		if r != nil {
+		if r := recover(); r != nil {
 			panic(fmt.Sprintf("Error mapping field: %s. DestType: %v. SourceType: %v. Error: %v", fieldName, destType, source.Type(), r))
 		}
 	}()
 
-	structField, _ := source.Type().FieldByName(fieldName)
-	ix := structField.Index
-	if len(structField.Index) > 1 {
-		parentField := source.FieldByIndex(ix[:len(ix)-1])
-		if parentField.Type().Kind() == reflect.Ptr && parentField.IsNil() {
-			return
-		}
-	}
-	sourceField := source.FieldByName(fieldName)
 	destField := destVal.Field(i)
 	if destType.Field(i).Anonymous {
 		mapValues(source, destField)
 	} else {
+		if valueIsContainedInNilEmbeddedType(source, fieldName) {
+			return
+		}
+		sourceField := source.FieldByName(fieldName)
 		mapValues(sourceField, destField)
 	}
+}
+
+func valueIsNil(value reflect.Value) bool {
+	return value.Type().Kind() == reflect.Ptr && value.IsNil()
+}
+
+func valueIsContainedInNilEmbeddedType(source reflect.Value, fieldName string) bool {
+	structField, _ := source.Type().FieldByName(fieldName)
+	ix := structField.Index
+	if len(structField.Index) > 1 {
+		parentField := source.FieldByIndex(ix[:len(ix)-1])
+		if valueIsNil(parentField) {
+			return true
+		}
+	}
+	return false
 }
