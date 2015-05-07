@@ -88,6 +88,14 @@ func TestWithUnnamedFields(t *testing.T) {
 	assert.Equal(t, 42, dest.DestTypeA.Foo)
 }
 
+func TestWhenUsingIncompatibleTypes(t *testing.T) {
+	defer func() { recover() }()
+	source := struct{ Foo string }{}
+	dest := struct{ Foo int }{}
+	Map(&source, &dest)
+	t.Error("Should have panicked")
+}
+
 type SourceTypeA struct {
 	Foo int
 	Bar string
