@@ -59,6 +59,18 @@ func TestWithSliceTypes(t *testing.T) {
 	assert.Equal(t, 2, dest.Children[1].Foo)
 }
 
+func TestWhenSourceIsMissingField(t *testing.T) {
+	defer func() { recover() }()
+	source := struct {
+		A string
+	}{}
+	dest := struct {
+		A, B string
+	}{}
+	Map(&source, &dest)
+	t.Error("Should have panicked")
+}
+
 func TestWithUnnamedFields(t *testing.T) {
 	source := struct {
 		Baz string
