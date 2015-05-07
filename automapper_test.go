@@ -5,27 +5,23 @@ import (
 	"testing"
 )
 
-func TestDestinationPassedAsPointer(t *testing.T) {
+func TestPanicWhenDestIsNotPointer(t *testing.T) {
+	defer func() { recover() }()
 	source, dest := SourceTypeA{}, DestTypeA{}
-	err := Map(source, &dest)
-	assert.Nil(t, err)
-}
+	Map(source, dest)
 
-func TestDestinationNotPassedAsPointer(t *testing.T) {
-	source, dest := SourceTypeA{}, DestTypeA{}
-	err := Map(source, dest)
-	assert.NotNil(t, err)
+	t.Error("Should have panicked")
 }
 
 func TestDestinationIsUpdatedFromSource(t *testing.T) {
 	source, dest := SourceTypeA{42}, DestTypeA{}
-	MustMap(source, &dest)
+	Map(source, &dest)
 	assert.Equal(t, 42, dest.Foo)
 }
 
 func TestDestinationIsUpdatedFromSourceWhenSourcePassedAsPtr(t *testing.T) {
 	source, dest := SourceTypeA{42}, DestTypeA{}
-	MustMap(&source, &dest)
+	Map(&source, &dest)
 	assert.Equal(t, 42, dest.Foo)
 }
 
