@@ -14,21 +14,24 @@ func TestPanicWhenDestIsNotPointer(t *testing.T) {
 }
 
 func TestDestinationIsUpdatedFromSource(t *testing.T) {
-	source, dest := SourceTypeA{42}, DestTypeA{}
+	source, dest := SourceTypeA{Foo: 42}, DestTypeA{}
 	Map(source, &dest)
 	assert.Equal(t, 42, dest.Foo)
 }
 
 func TestDestinationIsUpdatedFromSourceWhenSourcePassedAsPtr(t *testing.T) {
-	source, dest := SourceTypeA{42}, DestTypeA{}
+	source, dest := SourceTypeA{42, "Bar"}, DestTypeA{}
 	Map(&source, &dest)
 	assert.Equal(t, 42, dest.Foo)
+	assert.Equal(t, "Bar", dest.Bar)
 }
 
 type SourceTypeA struct {
 	Foo int
+	Bar string
 }
 
 type DestTypeA struct {
 	Foo int
+	Bar string
 }

@@ -14,8 +14,10 @@ func Map(source, dest interface{}) {
 		sourceVal = sourceVal.Elem()
 	}
 	destType = destType.Elem()
-	fieldName := destType.Field(0).Name
-	value := sourceVal.FieldByName(fieldName)
 	var destVal = reflect.ValueOf(dest).Elem()
-	destVal.Field(0).Set(value)
+	for i := 0; i < destVal.NumField(); i++ {
+		fieldName := destType.Field(i).Name
+		value := sourceVal.FieldByName(fieldName)
+		destVal.Field(i).Set(value)
+	}
 }
