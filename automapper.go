@@ -5,9 +5,7 @@
 // package can help converting from one type to another.
 package automapper
 
-import (
-	"reflect"
-)
+import "reflect"
 
 // Map fills out the fields in dest with values from source. All fields in the
 // destination object must exist in the source object.
@@ -32,16 +30,27 @@ func Map(source, dest interface{}) {
 		panic("Dest must be a pointer type")
 	}
 	var sourceVal = reflect.ValueOf(source)
-	if sourceVal.Type().Kind() == reflect.Ptr {
-		sourceVal = sourceVal.Elem()
-	}
 	var destVal = reflect.ValueOf(dest).Elem()
 	mapValues(sourceVal, destVal)
 }
 
 func mapValues(sourceVal, destVal reflect.Value) {
+	defer func() {
+		p := recover()
+		if p != nil {
+			panic(p)
+		}
+	}()
+
 	destType := destVal.Type()
 	if destType.Kind() == reflect.Struct {
+		if sourceVal.Type().Kind() == reflect.Ptr {
+			if sourceVal.IsNil() {
+				// If source is nil, it maps to an empty struct
+				return
+			}
+			sourceVal = sourceVal.Elem()
+		}
 		for i := 0; i < destVal.NumField(); i++ {
 			fieldName := destType.Field(i).Name
 			sourceField := sourceVal.FieldByName(fieldName)
@@ -54,6 +63,13 @@ func mapValues(sourceVal, destVal reflect.Value) {
 		}
 	} else if destType == sourceVal.Type() {
 		destVal.Set(sourceVal)
+	} else if destType.Kind() == reflect.Ptr {
+		if sourceVal.Type().Kind() == reflect.Ptr && sourceVal.IsNil() {
+			return
+		}
+		val := reflect.New(destType.Elem())
+		mapValues(sourceVal, val.Elem())
+		destVal.Set(val)
 	} else if destType.Kind() == reflect.Slice {
 		length := sourceVal.Len()
 		target := reflect.MakeSlice(destType, length, length)

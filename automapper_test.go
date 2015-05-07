@@ -88,6 +88,33 @@ func TestWithUnnamedFields(t *testing.T) {
 	assert.Equal(t, 42, dest.DestTypeA.Foo)
 }
 
+func TestWithPointerFieldsNotNil(t *testing.T) {
+	source := struct {
+		Foo *SourceTypeA
+	}{}
+	dest := struct {
+		Foo *DestTypeA
+	}{}
+	source.Foo = nil
+
+	Map(&source, &dest)
+	assert.Nil(t, dest.Foo)
+}
+
+func TestWithPointerFieldsNil(t *testing.T) {
+	source := struct {
+		Foo *SourceTypeA
+	}{}
+	dest := struct {
+		Foo *DestTypeA
+	}{}
+	source.Foo = &SourceTypeA{Foo: 42}
+
+	Map(&source, &dest)
+	assert.NotNil(t, dest.Foo)
+	assert.Equal(t, 42, dest.Foo.Foo)
+}
+
 func TestWhenUsingIncompatibleTypes(t *testing.T) {
 	defer func() { recover() }()
 	source := struct{ Foo string }{}
