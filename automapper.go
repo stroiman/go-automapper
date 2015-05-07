@@ -3,7 +3,6 @@
 package automapper
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -31,13 +30,10 @@ func mapValues(sourceVal, destVal reflect.Value) {
 			continue
 		}
 		destFieldType := destField.Type()
-		fmt.Printf("Field %s. Type %s, IsArray: %v\n", fieldName, destFieldType, destFieldType.Kind() == reflect.Slice)
 		if destFieldType == sourceField.Type() {
 			destField.Set(sourceField)
 		} else if destFieldType.Kind() == reflect.Slice {
 			length := sourceField.Len()
-			arrayElmType := destFieldType.Elem()
-			fmt.Printf("Array elm type: %v\n", arrayElmType)
 			target := reflect.MakeSlice(destFieldType, length, length)
 			for j := 0; j < length; j++ {
 				val := reflect.New(destFieldType.Elem()).Elem()
