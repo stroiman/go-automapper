@@ -2,7 +2,10 @@
 // with compatible fields
 package automapper
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 func Map(source, dest interface{}) {
 	var destType = reflect.TypeOf(dest)
@@ -23,8 +26,21 @@ func mapValues(sourceVal, destVal reflect.Value) {
 		fieldName := destType.Field(i).Name
 		sourceField := sourceVal.FieldByName(fieldName)
 		destField := destVal.Field(i)
-		if destField.Type() == sourceField.Type() {
+		destFieldType := destField.Type()
+		fmt.Printf("Field %s. Type %s, IsArray: %v\n", fieldName, destFieldType, destFieldType.Kind() == reflect.Slice)
+		if destFieldType == sourceField.Type() {
 			destField.Set(sourceField)
+		} else if destFieldType.Kind() == reflect.Slice {
+			length := sourceField.Len()
+			arrayElmType := destFieldType.Elem()
+			fmt.Printf("Array elm type: %v\n", arrayElmType)
+			target := reflect.MakeSlice(destFieldType, length, length)
+			for j := 0; j < length; j++ {
+				val := reflect.New(destFieldType.Elem()).Elem()
+				mapValues(sourceField.Index(j), val)
+				target.Index(j).Set(val)
+			}
+			destField.Set(target)
 		} else {
 			mapValues(sourceField, destField)
 		}
