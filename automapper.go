@@ -86,7 +86,7 @@ func mapField(source, destVal reflect.Value, i int) {
 	defer func() {
 		r := recover()
 		if r != nil {
-			panic(fmt.Sprintf("Error mapping field: %s. DestType: %v. Error: %v", fieldName, destType, r))
+			panic(fmt.Sprintf("Error mapping field: %s. DestType: %v. SourceType: %v. Error: %v", fieldName, destType, source.Type(), r))
 		}
 	}()
 
