@@ -6,6 +6,7 @@
 package automapper
 
 import (
+	"fmt"
 	"reflect"
 )
 
@@ -54,14 +55,7 @@ func mapValues(sourceVal, destVal reflect.Value) {
 			sourceVal = sourceVal.Elem()
 		}
 		for i := 0; i < destVal.NumField(); i++ {
-			fieldName := destType.Field(i).Name
-			sourceField := sourceVal.FieldByName(fieldName)
-			destField := destVal.Field(i)
-			if destType.Field(i).Anonymous {
-				mapValues(sourceVal, destField)
-				continue
-			}
-			mapValues(sourceField, destField)
+			mapField(sourceVal, destVal, i)
 		}
 	} else if destType == sourceVal.Type() {
 		destVal.Set(sourceVal)
@@ -83,5 +77,24 @@ func mapValues(sourceVal, destVal reflect.Value) {
 		destVal.Set(target)
 	} else {
 		panic("Currently not supported")
+	}
+}
+
+func mapField(source, destVal reflect.Value, i int) {
+	destType := destVal.Type()
+	fieldName := destType.Field(i).Name
+	defer func() {
+		r := recover()
+		if r != nil {
+			panic(fmt.Sprintf("Error mapping field: %s. DestType: %v. Error: %v", fieldName, destType, r))
+		}
+	}()
+
+	sourceField := source.FieldByName(fieldName)
+	destField := destVal.Field(i)
+	if destType.Field(i).Anonymous {
+		mapValues(source, destField)
+	} else {
+		mapValues(sourceField, destField)
 	}
 }
