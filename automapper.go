@@ -13,6 +13,9 @@ func Map(source, dest interface{}) {
 	if sourceVal.Type().Kind() == reflect.Ptr {
 		sourceVal = sourceVal.Elem()
 	}
+	destType = destType.Elem()
+	fieldName := destType.Field(0).Name
+	value := sourceVal.FieldByName(fieldName)
 	var destVal = reflect.ValueOf(dest).Elem()
-	destVal.Field(0).Set(sourceVal.Field(0))
+	destVal.Field(0).Set(value)
 }
