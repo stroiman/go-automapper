@@ -90,6 +90,14 @@ func mapField(source, destVal reflect.Value, i int) {
 		}
 	}()
 
+	structField, _ := source.Type().FieldByName(fieldName)
+	ix := structField.Index
+	if len(structField.Index) > 1 {
+		parentField := source.FieldByIndex(ix[:len(ix)-1])
+		if parentField.Type().Kind() == reflect.Ptr && parentField.IsNil() {
+			return
+		}
+	}
 	sourceField := source.FieldByName(fieldName)
 	destField := destVal.Field(i)
 	if destType.Field(i).Anonymous {

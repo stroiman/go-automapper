@@ -145,6 +145,19 @@ func TestMapFromPointerToNonPointerTypeWithoutData(t *testing.T) {
 	assert.Equal(t, 0, dest.Foo.Foo)
 }
 
+func TestMapFromPointerToAnonymousTypeToFieldName(t *testing.T) {
+	source := struct {
+		*SourceTypeA
+	}{}
+	dest := struct {
+		Foo int
+	}{}
+	source.SourceTypeA = nil
+
+	Map(&source, &dest)
+	assert.Equal(t, 0, dest.Foo)
+}
+
 func TestMapFromPointerToNonPointerTypeWithoutDataAndIncompatibleType(t *testing.T) {
 	fmt.Println("START!!!!")
 	defer func() { recover() }()
