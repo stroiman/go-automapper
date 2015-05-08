@@ -1,3 +1,5 @@
+// Copyright (c) 2015 Peter Strøiman, distributed under the MIT license
+
 // Package automapper provides support for mapping between two different types
 // with compatible fields. The intended application for this is when you use
 // one set of types to represent DTOs (data transfer objects, e.g. json data),

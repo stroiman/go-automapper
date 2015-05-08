@@ -1,3 +1,5 @@
+// Copyright (c) 2015 Peter Strøiman, distributed under the MIT license
+
 package automapper
 
 import (
