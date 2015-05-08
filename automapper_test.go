@@ -1,7 +1,6 @@
 package automapper
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -59,6 +58,20 @@ func TestWithSliceTypes(t *testing.T) {
 	Map(&source, &dest)
 	assert.Equal(t, 1, dest.Children[0].Foo)
 	assert.Equal(t, 2, dest.Children[1].Foo)
+}
+
+func TestWithEmptySliceAndIncompatibleTypes(t *testing.T) {
+	defer func() { recover() }()
+
+	source := struct {
+		Children []struct{ Foo string }
+	}{}
+	dest := struct {
+		Children []struct{ Bar int }
+	}{}
+
+	Map(&source, &dest)
+	t.Error("Should have panicked")
 }
 
 func TestWhenSourceIsMissingField(t *testing.T) {
@@ -159,7 +172,6 @@ func TestMapFromPointerToAnonymousTypeToFieldName(t *testing.T) {
 }
 
 func TestMapFromPointerToNonPointerTypeWithoutDataAndIncompatibleType(t *testing.T) {
-	fmt.Println("START!!!!")
 	defer func() { recover() }()
 	// Just make sure we stil panic
 	source := struct {

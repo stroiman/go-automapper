@@ -3,6 +3,9 @@
 // one set of types to represent DTOs (data transfer objects, e.g. json data),
 // and a different set of types internally in the application. Using this
 // package can help converting from one type to another.
+//
+// This package uses reflection to perform mapping which should be fine for
+// all but the most demanding applications.
 package automapper
 
 import (
@@ -24,9 +27,6 @@ import (
 // It is a design decision to panic when a field cannot be mapped in the
 // destination to ensure that a renamed field in either the source or
 // destination does not result in subtle silent buge.
-//
-// BUG(ps) - It is the intend that the code should panic early when mapping
-// incompatible types. Empty slices are not supported however
 func Map(source, dest interface{}) {
 	var destType = reflect.TypeOf(dest)
 	if destType.Kind() != reflect.Ptr {
@@ -74,10 +74,20 @@ func mapValues(sourceVal, destVal reflect.Value) {
 			mapValues(sourceVal.Index(j), val)
 			target.Index(j).Set(val)
 		}
+
+		if length == 0 {
+			verifyArrayTypesAreCompatible(sourceVal, destVal)
+		}
 		destVal.Set(target)
 	} else {
 		panic("Currently not supported")
 	}
+}
+
+func verifyArrayTypesAreCompatible(sourceVal, destVal reflect.Value) {
+	dummyDest := reflect.MakeSlice(destVal.Type(), 1, 1)
+	dummySource := reflect.MakeSlice(sourceVal.Type(), 1, 1)
+	mapValues(dummySource, dummyDest)
 }
 
 func mapField(source, destVal reflect.Value, i int) {
