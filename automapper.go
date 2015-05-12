@@ -40,13 +40,6 @@ func Map(source, dest interface{}) {
 }
 
 func mapValues(sourceVal, destVal reflect.Value) {
-	defer func() {
-		p := recover()
-		if p != nil {
-			panic(p)
-		}
-	}()
-
 	destType := destVal.Type()
 	if destType.Kind() == reflect.Struct {
 		if sourceVal.Type().Kind() == reflect.Ptr {
@@ -69,27 +62,33 @@ func mapValues(sourceVal, destVal reflect.Value) {
 		mapValues(sourceVal, val.Elem())
 		destVal.Set(val)
 	} else if destType.Kind() == reflect.Slice {
-		length := sourceVal.Len()
-		target := reflect.MakeSlice(destType, length, length)
-		for j := 0; j < length; j++ {
-			val := reflect.New(destType.Elem()).Elem()
-			mapValues(sourceVal.Index(j), val)
-			target.Index(j).Set(val)
-		}
-
-		if length == 0 {
-			verifyArrayTypesAreCompatible(sourceVal, destVal)
-		}
-		destVal.Set(target)
+		mapSlice(sourceVal, destVal)
 	} else {
 		panic("Currently not supported")
 	}
 }
 
+func mapSlice(sourceVal, destVal reflect.Value) {
+	destType := destVal.Type()
+	length := sourceVal.Len()
+	target := reflect.MakeSlice(destType, length, length)
+	for j := 0; j < length; j++ {
+		val := reflect.New(destType.Elem()).Elem()
+		mapValues(sourceVal.Index(j), val)
+		target.Index(j).Set(val)
+	}
+
+	if length == 0 {
+		verifyArrayTypesAreCompatible(sourceVal, destVal)
+	}
+	destVal.Set(target)
+}
+
 func verifyArrayTypesAreCompatible(sourceVal, destVal reflect.Value) {
-	dummyDest := reflect.MakeSlice(destVal.Type(), 1, 1)
+	//dummyDest := reflect.MakeSlice(destVal.Type(), 1, 1)
+	dummyDest := reflect.New(reflect.PtrTo(destVal.Type()))
 	dummySource := reflect.MakeSlice(sourceVal.Type(), 1, 1)
-	mapValues(dummySource, dummyDest)
+	mapValues(dummySource, dummyDest.Elem())
 }
 
 func mapField(source, destVal reflect.Value, i int) {
