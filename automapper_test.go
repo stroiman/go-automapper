@@ -62,6 +62,30 @@ func TestWithSliceTypes(t *testing.T) {
 	assert.Equal(t, 2, dest.Children[1].Foo)
 }
 
+func TestWithMultiLevelSlices(t *testing.T) {
+	source := struct {
+		Parents []SourceParent
+	}{}
+	dest := struct {
+		Parents []DestParent
+	}{}
+	source.Parents = []SourceParent{
+		SourceParent{
+			Children: []SourceTypeA{
+				SourceTypeA{Foo: 42},
+				SourceTypeA{Foo: 43},
+			},
+		},
+		SourceParent{
+			Children: []SourceTypeA{
+				SourceTypeA{Foo: 44},
+			},
+		},
+	}
+
+	Map(&source, &dest)
+}
+
 func TestWithEmptySliceAndIncompatibleTypes(t *testing.T) {
 	defer func() { recover() }()
 
@@ -196,6 +220,14 @@ func TestWhenUsingIncompatibleTypes(t *testing.T) {
 	dest := struct{ Foo int }{}
 	Map(&source, &dest)
 	t.Error("Should have panicked")
+}
+
+type SourceParent struct {
+	Children []SourceTypeA
+}
+
+type DestParent struct {
+	Children []DestTypeA
 }
 
 type SourceTypeA struct {

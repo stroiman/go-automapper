@@ -40,13 +40,6 @@ func Map(source, dest interface{}) {
 }
 
 func mapValues(sourceVal, destVal reflect.Value) {
-	defer func() {
-		p := recover()
-		if p != nil {
-			panic(p)
-		}
-	}()
-
 	destType := destVal.Type()
 	if destType.Kind() == reflect.Struct {
 		if sourceVal.Type().Kind() == reflect.Ptr {
