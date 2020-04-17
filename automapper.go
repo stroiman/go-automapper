@@ -117,13 +117,25 @@ func mapField(source, destVal reflect.Value, i int, loose bool) {
 	}()
 
 	destField := destVal.Field(i)
-	if destType.Field(i).Anonymous {
+	if destField.Kind() == reflect.Struct {
+		mapValues(source, destField, loose)
+	} else if destType.Field(i).Anonymous {
 		mapValues(source, destField, loose)
 	} else {
 		if valueIsContainedInNilEmbeddedType(source, fieldName) {
 			return
 		}
-		sourceField := source.FieldByName(fieldName)
+
+		sourceField := reflect.Value{}
+		if source.Kind() == reflect.Struct {
+			for i := 0; i < source.NumField(); i++ {
+				if sourceField = source.Field(i).FieldByName(fieldName); (sourceField != reflect.Value{}) {
+					break
+				}
+			}
+		} else {
+			sourceField = source.FieldByName(fieldName)
+		}
 		if (sourceField == reflect.Value{} && loose) {
 			return
 		}
