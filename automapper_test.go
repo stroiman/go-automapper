@@ -46,6 +46,28 @@ func TestWithNestedTypes(t *testing.T) {
 	assert.Equal(t, "Bar", dest.Child.Bar)
 }
 
+func TestWithSourceSecondLevel(t *testing.T) {
+	source := struct {
+		Child DestTypeA
+	}{}
+	dest := SourceTypeA{}
+
+	source.Child.Bar = "Bar"
+	Map(&source, &dest)
+	assert.Equal(t, "Bar", dest.Bar)
+}
+
+func TestWithDestSecondLevel(t *testing.T) {
+	source := SourceTypeA{}
+	dest := struct {
+		Child DestTypeA
+	}{}
+
+	source.Bar = "Bar"
+	Map(&source, &dest)
+	assert.Equal(t, "Bar", dest.Child.Bar)
+}
+
 func TestWithSliceTypes(t *testing.T) {
 	source := struct {
 		Children []SourceTypeA

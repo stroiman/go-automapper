@@ -124,8 +124,23 @@ func mapField(source, destVal reflect.Value, i int, loose bool) {
 			return
 		}
 		sourceField := source.FieldByName(fieldName)
-		if (sourceField == reflect.Value{} && loose) {
-			return
+		if (sourceField == reflect.Value{}) {
+			if loose {
+				return
+			}
+			if destField.Kind() == reflect.Struct {
+				mapValues(source, destField, loose)
+				return
+			} else {
+				for i := 0; i < source.NumField(); i++ {
+					if source.Field(i).Kind() != reflect.Struct {
+						continue
+					}
+					if sourceField = source.Field(i).FieldByName(fieldName); (sourceField != reflect.Value{}) {
+						break
+					}
+				}
+			}
 		}
 		mapValues(sourceField, destField, loose)
 	}
