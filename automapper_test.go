@@ -4,6 +4,7 @@ package automapper
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -254,6 +255,17 @@ func TestWithLooseOption(t *testing.T) {
 	MapLoose(&source, &dest)
 	assert.Equal(t, dest.Foo, "Foo")
 	assert.Equal(t, dest.Bar, 0)
+}
+
+func TestStructCanBeSet(t *testing.T) {
+	source := struct {
+		Foo time.Time
+	}{time.Now()}
+	dest := struct {
+		Foo time.Time
+	}{}
+	Map(&source, &dest)
+	assert.Equal(t, source.Foo, dest.Foo)
 }
 
 type SourceParent struct {
