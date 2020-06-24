@@ -3,9 +3,9 @@
 package automapper
 
 import (
-	"testing"
-
 	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
 )
 
 func TestPanicWhenDestIsNotPointer(t *testing.T) {
@@ -254,6 +254,20 @@ func TestWithLooseOption(t *testing.T) {
 	MapLoose(&source, &dest)
 	assert.Equal(t, dest.Foo, "Foo")
 	assert.Equal(t, dest.Bar, 0)
+}
+
+func TestSetStructOfSameTypeDirectly(t *testing.T) {
+	type FooType struct {
+		time.Time
+	}
+	source := struct {
+		Foo FooType
+	}{FooType{Time: time.Now().UTC()}}
+	dest := struct {
+		Foo FooType
+	}{}
+	Map(&source, &dest)
+	assert.Equal(t, source.Foo.String(), dest.Foo.String())
 }
 
 type SourceParent struct {
