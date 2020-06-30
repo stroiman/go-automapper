@@ -81,7 +81,7 @@ func mapValues(sourceVal, destVal reflect.Value, loose bool) {
 	} else if destType.Kind() == reflect.Slice {
 		mapSlice(sourceVal, destVal, loose)
 	} else {
-		panic("Currently not supported")
+		destVal.Set(sourceVal.Convert(destType))
 	}
 }
 
