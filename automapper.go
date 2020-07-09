@@ -58,7 +58,7 @@ func MapLoose(source, dest interface{}) {
 
 func mapValues(sourceVal, destVal reflect.Value, loose bool) {
 	destType := destVal.Type()
-	if destType.Kind() == reflect.Struct {
+	if destType.Kind() == reflect.Struct && sourceVal.Type() != destVal.Type() {
 		if sourceVal.Type().Kind() == reflect.Ptr {
 			if sourceVal.IsNil() {
 				// If source is nil, it maps to an empty struct
