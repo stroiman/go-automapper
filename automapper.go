@@ -29,36 +29,21 @@ import (
 // It is a design decision to panic when a field cannot be mapped in the
 // destination to ensure that a renamed field in either the source or
 // destination does not result in subtle silent bug.
-func Map(source, dest interface{}) {
-	var destType = reflect.TypeOf(dest)
-	if destType.Kind() != reflect.Ptr {
-		panic("Dest must be a pointer type")
-	}
+func Map[T any](source any) T {
+
+	var dest *T = new(T)
+
 	var sourceVal = reflect.ValueOf(source)
 	var destVal = reflect.ValueOf(dest).Elem()
-	mapValues(sourceVal, destVal, false)
+	mapValues(sourceVal, destVal)
+
+	return *dest
+
 }
 
-// MapLoose works just like Map, except it doesn't fail when the destination
-// type contains fields not supplied by the source.
-//
-// This function is meant to be a temporary solution - the general idea is
-// that the Map function should take a number of options that can modify its
-// behavior - but I'd rather not add that functionality before I have a better
-// idea what is a good options format.
-func MapLoose(source, dest interface{}) {
-	var destType = reflect.TypeOf(dest)
-	if destType.Kind() != reflect.Ptr {
-		panic("Dest must be a pointer type")
-	}
-	var sourceVal = reflect.ValueOf(source)
-	var destVal = reflect.ValueOf(dest).Elem()
-	mapValues(sourceVal, destVal, true)
-}
-
-func mapValues(sourceVal, destVal reflect.Value, loose bool) {
-	destType := destVal.Type()
-	if destType.Kind() == reflect.Struct {
+func mapValues(sourceVal, destVal reflect.Value) {
+	sourceType := sourceVal.Type()
+	if sourceType.Kind() == reflect.Struct {
 		if sourceVal.Type().Kind() == reflect.Ptr {
 			if sourceVal.IsNil() {
 				// If source is nil, it maps to an empty struct
@@ -66,50 +51,52 @@ func mapValues(sourceVal, destVal reflect.Value, loose bool) {
 			}
 			sourceVal = sourceVal.Elem()
 		}
-		for i := 0; i < destVal.NumField(); i++ {
-			mapField(sourceVal, destVal, i, loose)
+		for i := 0; i < sourceType.NumField(); i++ {
+			mapField(sourceVal, destVal, i)
 		}
-	} else if destType == sourceVal.Type() {
+	} else if sourceType.Kind() == reflect.Slice {
+		mapSlice(sourceVal, destVal)
+	} else if sourceType == sourceVal.Type() {
 		destVal.Set(sourceVal)
-	} else if destType.Kind() == reflect.Ptr {
+	} else if sourceType.Kind() == reflect.Ptr {
 		if valueIsNil(sourceVal) {
 			return
 		}
-		val := reflect.New(destType.Elem())
-		mapValues(sourceVal, val.Elem(), loose)
+		val := reflect.New(sourceType.Elem())
+		mapValues(sourceVal, val.Elem())
 		destVal.Set(val)
-	} else if destType.Kind() == reflect.Slice {
-		mapSlice(sourceVal, destVal, loose)
 	} else {
 		panic("Currently not supported")
 	}
+
 }
 
-func mapSlice(sourceVal, destVal reflect.Value, loose bool) {
+func mapSlice(sourceVal, destVal reflect.Value) {
 	destType := destVal.Type()
 	length := sourceVal.Len()
 	target := reflect.MakeSlice(destType, length, length)
 	for j := 0; j < length; j++ {
 		val := reflect.New(destType.Elem()).Elem()
-		mapValues(sourceVal.Index(j), val, loose)
+		mapValues(sourceVal.Index(j), val)
 		target.Index(j).Set(val)
 	}
 
 	if length == 0 {
-		verifyArrayTypesAreCompatible(sourceVal, destVal, loose)
+		verifyArrayTypesAreCompatible(sourceVal, destVal)
 	}
 	destVal.Set(target)
 }
 
-func verifyArrayTypesAreCompatible(sourceVal, destVal reflect.Value, loose bool) {
+func verifyArrayTypesAreCompatible(sourceVal, destVal reflect.Value) {
 	dummyDest := reflect.New(reflect.PtrTo(destVal.Type()))
 	dummySource := reflect.MakeSlice(sourceVal.Type(), 1, 1)
-	mapValues(dummySource, dummyDest.Elem(), loose)
+	mapValues(dummySource, dummyDest.Elem())
 }
 
-func mapField(source, destVal reflect.Value, i int, loose bool) {
+func mapField(source, destVal reflect.Value, i int) {
 	destType := destVal.Type()
 	fieldName := destType.Field(i).Name
+
 	defer func() {
 		if r := recover(); r != nil {
 			panic(fmt.Sprintf("Error mapping field: %s. DestType: %v. SourceType: %v. Error: %v", fieldName, destType, source.Type(), r))
@@ -118,18 +105,16 @@ func mapField(source, destVal reflect.Value, i int, loose bool) {
 
 	destField := destVal.Field(i)
 	if destType.Field(i).Anonymous {
-		mapValues(source, destField, loose)
+		mapValues(source, destField)
 	} else {
 		if valueIsContainedInNilEmbeddedType(source, fieldName) {
 			return
 		}
 		sourceField := source.FieldByName(fieldName)
 		if (sourceField == reflect.Value{}) {
-			if loose {
-				return
-			}
+
 			if destField.Kind() == reflect.Struct {
-				mapValues(source, destField, loose)
+				mapValues(source, destField)
 				return
 			} else {
 				for i := 0; i < source.NumField(); i++ {
@@ -142,7 +127,7 @@ func mapField(source, destVal reflect.Value, i int, loose bool) {
 				}
 			}
 		}
-		mapValues(sourceField, destField, loose)
+		mapValues(sourceField, destField)
 	}
 }
 
