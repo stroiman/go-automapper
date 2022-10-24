@@ -29,8 +29,9 @@ import (
 // It is a design decision to panic when a field cannot be mapped in the
 // destination to ensure that a renamed field in either the source or
 // destination does not result in subtle silent bug.
-func Map[T any](source any) T {
 
+func Map[T any](source any) T {
+	// do like this des := Map[struct{ Children []testClass2 }](source)
 	var dest *T = new(T)
 
 	var sourceVal = reflect.ValueOf(source)
