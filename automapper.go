@@ -36,7 +36,7 @@ func Map(source, dest interface{}) {
 	}
 	var sourceVal = reflect.ValueOf(source)
 	var destVal = reflect.ValueOf(dest).Elem()
-	mapValues(sourceVal, destVal, false)
+	mapper{}.mapValues(sourceVal, destVal)
 }
 
 // MapLoose works just like Map, except it doesn't fail when the destination
@@ -53,10 +53,14 @@ func MapLoose(source, dest interface{}) {
 	}
 	var sourceVal = reflect.ValueOf(source)
 	var destVal = reflect.ValueOf(dest).Elem()
-	mapValues(sourceVal, destVal, true)
+	mapper{loose: true}.mapValues(sourceVal, destVal)
 }
 
-func mapValues(sourceVal, destVal reflect.Value, loose bool) {
+type mapper struct {
+	loose bool
+}
+
+func (m mapper) mapValues(sourceVal, destVal reflect.Value) {
 	destType := destVal.Type()
 	if destType.Kind() == reflect.Struct {
 		if sourceVal.Type().Kind() == reflect.Ptr {
@@ -67,7 +71,7 @@ func mapValues(sourceVal, destVal reflect.Value, loose bool) {
 			sourceVal = sourceVal.Elem()
 		}
 		for i := 0; i < destVal.NumField(); i++ {
-			mapField(sourceVal, destVal, i, loose)
+			m.mapField(sourceVal, destVal, i)
 		}
 	} else if destType == sourceVal.Type() {
 		destVal.Set(sourceVal)
@@ -76,73 +80,82 @@ func mapValues(sourceVal, destVal reflect.Value, loose bool) {
 			return
 		}
 		val := reflect.New(destType.Elem())
-		mapValues(sourceVal, val.Elem(), loose)
+		m.mapValues(sourceVal, val.Elem())
 		destVal.Set(val)
 	} else if destType.Kind() == reflect.Slice {
-		mapSlice(sourceVal, destVal, loose)
+		m.mapSlice(sourceVal, destVal)
 	} else {
 		panic("Currently not supported")
 	}
 }
 
-func mapSlice(sourceVal, destVal reflect.Value, loose bool) {
+func (m mapper) mapSlice(sourceVal, destVal reflect.Value) {
 	destType := destVal.Type()
 	length := sourceVal.Len()
 	target := reflect.MakeSlice(destType, length, length)
 	for j := 0; j < length; j++ {
 		val := reflect.New(destType.Elem()).Elem()
-		mapValues(sourceVal.Index(j), val, loose)
+		m.mapValues(sourceVal.Index(j), val)
 		target.Index(j).Set(val)
 	}
 
 	if length == 0 {
-		verifyArrayTypesAreCompatible(sourceVal, destVal, loose)
+		m.verifyArrayTypesAreCompatible(sourceVal, destVal)
 	}
 	destVal.Set(target)
 }
 
-func verifyArrayTypesAreCompatible(sourceVal, destVal reflect.Value, loose bool) {
+func (m mapper) verifyArrayTypesAreCompatible(sourceVal, destVal reflect.Value) {
 	dummyDest := reflect.New(reflect.PtrTo(destVal.Type()))
 	dummySource := reflect.MakeSlice(sourceVal.Type(), 1, 1)
-	mapValues(dummySource, dummyDest.Elem(), loose)
+	m.mapValues(dummySource, dummyDest.Elem())
 }
 
-func mapField(source, destVal reflect.Value, i int, loose bool) {
+func (m mapper) mapField(source, destVal reflect.Value, i int) {
 	destType := destVal.Type()
 	fieldName := destType.Field(i).Name
 	defer func() {
 		if r := recover(); r != nil {
-			panic(fmt.Sprintf("Error mapping field: %s. DestType: %v. SourceType: %v. Error: %v", fieldName, destType, source.Type(), r))
+			panic(
+				fmt.Sprintf(
+					"Error mapping field: %s. DestType: %v. SourceType: %v. Error: %v",
+					fieldName,
+					destType,
+					source.Type(),
+					r,
+				),
+			)
 		}
 	}()
 
 	destField := destVal.Field(i)
 	if destType.Field(i).Anonymous {
-		mapValues(source, destField, loose)
+		m.mapValues(source, destField)
 	} else {
 		if valueIsContainedInNilEmbeddedType(source, fieldName) {
 			return
 		}
 		sourceField := source.FieldByName(fieldName)
 		if (sourceField == reflect.Value{}) {
-			if loose {
+			if m.loose {
 				return
 			}
 			if destField.Kind() == reflect.Struct {
-				mapValues(source, destField, loose)
+				m.mapValues(source, destField)
 				return
 			} else {
 				for i := 0; i < source.NumField(); i++ {
 					if source.Field(i).Kind() != reflect.Struct {
 						continue
 					}
-					if sourceField = source.Field(i).FieldByName(fieldName); (sourceField != reflect.Value{}) {
+					if sourceField = source.Field(i).
+						FieldByName(fieldName); (sourceField != reflect.Value{}) {
 						break
 					}
 				}
 			}
 		}
-		mapValues(sourceField, destField, loose)
+		m.mapValues(sourceField, destField)
 	}
 }
 
