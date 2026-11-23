@@ -3,9 +3,8 @@
 package automapper
 
 import (
+	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPanicWhenDestIsNotPointer(t *testing.T) {
@@ -16,17 +15,53 @@ func TestPanicWhenDestIsNotPointer(t *testing.T) {
 	t.Error("Should have panicked")
 }
 
+func isNil(got any) bool {
+	if got == nil {
+		return true
+	}
+	v := reflect.ValueOf(got)
+	if v.Type().Kind() == reflect.Pointer && v.IsNil() {
+		return true
+	}
+	return false
+}
+
+func assertNil(t testing.TB, got any) {
+	t.Helper()
+	if isNil(got) {
+		return
+	}
+	t.Errorf("Expected nil value - got: %v", got)
+}
+
+func assertNotNil(t testing.TB, got any) {
+	t.Helper()
+	if !isNil(got) {
+		return
+	}
+	t.Errorf("Expected non-nil value")
+}
+
+func assertEqual(t testing.TB, got, want any) {
+	t.Helper()
+
+	if reflect.DeepEqual(got, want) {
+		return
+	}
+	t.Errorf("Expected: %v - got: %v", want, got)
+}
+
 func TestDestinationIsUpdatedFromSource(t *testing.T) {
 	source, dest := SourceTypeA{Foo: 42}, DestTypeA{}
 	Map(source, &dest)
-	assert.Equal(t, 42, dest.Foo)
+	assertEqual(t, dest.Foo, 42)
 }
 
 func TestDestinationIsUpdatedFromSourceWhenSourcePassedAsPtr(t *testing.T) {
 	source, dest := SourceTypeA{42, "Bar"}, DestTypeA{}
 	Map(&source, &dest)
-	assert.Equal(t, 42, dest.Foo)
-	assert.Equal(t, "Bar", dest.Bar)
+	assertEqual(t, dest.Foo, 42)
+	assertEqual(t, dest.Bar, "Bar")
 }
 
 func TestWithNestedTypes(t *testing.T) {
@@ -42,8 +77,8 @@ func TestWithNestedTypes(t *testing.T) {
 	source.Baz = "Baz"
 	source.Child.Bar = "Bar"
 	Map(&source, &dest)
-	assert.Equal(t, "Baz", dest.Baz)
-	assert.Equal(t, "Bar", dest.Child.Bar)
+	assertEqual(t, dest.Baz, "Baz")
+	assertEqual(t, dest.Child.Bar, "Bar")
 }
 
 func TestWithSourceSecondLevel(t *testing.T) {
@@ -54,7 +89,7 @@ func TestWithSourceSecondLevel(t *testing.T) {
 
 	source.Child.Bar = "Bar"
 	Map(&source, &dest)
-	assert.Equal(t, "Bar", dest.Bar)
+	assertEqual(t, dest.Bar, "Bar")
 }
 
 func TestWithDestSecondLevel(t *testing.T) {
@@ -65,7 +100,7 @@ func TestWithDestSecondLevel(t *testing.T) {
 
 	source.Bar = "Bar"
 	Map(&source, &dest)
-	assert.Equal(t, "Bar", dest.Child.Bar)
+	assertEqual(t, dest.Child.Bar, "Bar")
 }
 
 func TestWithSliceTypes(t *testing.T) {
@@ -80,8 +115,8 @@ func TestWithSliceTypes(t *testing.T) {
 		SourceTypeA{Foo: 2}}
 
 	Map(&source, &dest)
-	assert.Equal(t, 1, dest.Children[0].Foo)
-	assert.Equal(t, 2, dest.Children[1].Foo)
+	assertEqual(t, dest.Children[0].Foo, 1)
+	assertEqual(t, dest.Children[1].Foo, 2)
 }
 
 func TestWithMultiLevelSlices(t *testing.T) {
@@ -145,8 +180,9 @@ func TestWithUnnamedFields(t *testing.T) {
 	source.SourceTypeA.Foo = 42
 
 	Map(&source, &dest)
-	assert.Equal(t, "Baz", dest.Baz)
-	assert.Equal(t, 42, dest.DestTypeA.Foo)
+
+	assertEqual(t, dest.Baz, "Baz")
+	assertEqual(t, dest.DestTypeA.Foo, 42)
 }
 
 func TestWithPointerFieldsNotNil(t *testing.T) {
@@ -159,7 +195,7 @@ func TestWithPointerFieldsNotNil(t *testing.T) {
 	source.Foo = nil
 
 	Map(&source, &dest)
-	assert.Nil(t, dest.Foo)
+	assertNil(t, dest.Foo)
 }
 
 func TestWithPointerFieldsNil(t *testing.T) {
@@ -172,8 +208,8 @@ func TestWithPointerFieldsNil(t *testing.T) {
 	source.Foo = &SourceTypeA{Foo: 42}
 
 	Map(&source, &dest)
-	assert.NotNil(t, dest.Foo)
-	assert.Equal(t, 42, dest.Foo.Foo)
+	assertNotNil(t, dest.Foo)
+	assertEqual(t, dest.Foo.Foo, 42)
 }
 
 func TestMapFromPointerToNonPointerTypeWithData(t *testing.T) {
@@ -186,8 +222,8 @@ func TestMapFromPointerToNonPointerTypeWithData(t *testing.T) {
 	source.Foo = &SourceTypeA{Foo: 42}
 
 	Map(&source, &dest)
-	assert.NotNil(t, dest.Foo)
-	assert.Equal(t, 42, dest.Foo.Foo)
+	assertNotNil(t, dest.Foo)
+	assertEqual(t, dest.Foo.Foo, 42)
 }
 
 func TestMapFromPointerToNonPointerTypeWithoutData(t *testing.T) {
@@ -200,8 +236,8 @@ func TestMapFromPointerToNonPointerTypeWithoutData(t *testing.T) {
 	source.Foo = nil
 
 	Map(&source, &dest)
-	assert.NotNil(t, dest.Foo)
-	assert.Equal(t, 0, dest.Foo.Foo)
+	assertNotNil(t, dest.Foo)
+	assertEqual(t, dest.Foo.Foo, 0)
 }
 
 func TestMapFromPointerToAnonymousTypeToFieldName(t *testing.T) {
@@ -214,7 +250,7 @@ func TestMapFromPointerToAnonymousTypeToFieldName(t *testing.T) {
 	source.SourceTypeA = nil
 
 	Map(&source, &dest)
-	assert.Equal(t, 0, dest.Foo)
+	assertEqual(t, dest.Foo, 0)
 }
 
 func TestMapFromPointerToNonPointerTypeWithoutDataAndIncompatibleType(t *testing.T) {
@@ -252,8 +288,8 @@ func TestWithLooseOption(t *testing.T) {
 		Bar int
 	}{}
 	MapLoose(&source, &dest)
-	assert.Equal(t, dest.Foo, "Foo")
-	assert.Equal(t, dest.Bar, 0)
+	assertEqual(t, dest.Foo, "Foo")
+	assertEqual(t, dest.Bar, 0)
 }
 
 type SourceParent struct {
