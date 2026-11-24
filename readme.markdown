@@ -36,17 +36,16 @@ func StrToInt(dst, src any) error {
     return err
 }
 
-var FormsMapper automapper.Mapper
+var formsMapper automapper.Mapper
 
 func ParseForm(f FormData) (User, error) {
-	m := Mapper{}
     var user User
-    err := m.Map(&user, f)
+    err := formsMapper.Map(&user, f)
     return user, err
 }
 
 func init() {
-    FormsMapper.Register(
+    formsMapper.Register(
         reflect.TypeOf[int](),    // Destination type / domain object
         reflect.TypeOf[string](), // Source type / forms data
         StrToInt)
