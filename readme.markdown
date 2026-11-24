@@ -26,6 +26,15 @@ making this useful also for validation.
 > cost of inconsistency. I have not yet decided whether to create true v2
 > release, or live with the inconsistencies.
 
+### Motivating example
+
+While the library was originally written for use cases where type conversion
+should always be possible, I realised another scenario would fit well;
+converting from unvalidated to validated input.
+
+A specific example of this scenario is converting HTML form post data,
+consisting entirely of strings, into a "business object".
+
 ```go
 // FormData is all strings, this is what we receive from the browser
 type FormData struct {
@@ -69,5 +78,13 @@ func init() {
 The error returned from `Map()` decorates the conversion errors with information
 about which field name/slice index with invalid data.
 
-One use case is to render validation errors next to the invalid form fields;
-though this scenario has yet to be battle tested
+If the structure of the source type matches an HTML form, 
+
+### Works for structs too
+
+You can even add custom conversion functions between struct types; or between
+primitive types and struct types. This will take precedence over default conversion.
+
+But if you rely heavily on this feature, consider whether this library is the
+right tool for the job! Maybe custom mapping code is the better trade-off? More
+code but easier to reason about.
