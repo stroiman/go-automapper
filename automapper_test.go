@@ -320,9 +320,9 @@ func TestConvertFromStringToInt(t *testing.T) {
 	}{}
 	m := Mapper{}
 	m.Register(
-		reflect.TypeOf(source.Foo),
 		reflect.TypeOf(dest.Foo),
-		func(src, dst interface{}) error {
+		reflect.TypeOf(source.Foo),
+		func(dst, src interface{}) error {
 			a := src.(string)
 			b := dst.(*int)
 			var err error
@@ -330,7 +330,7 @@ func TestConvertFromStringToInt(t *testing.T) {
 			return err
 		},
 	)
-	m.Map(source, &dest)
+	m.Map(&dest, source)
 	assertEqual(t, dest.Foo, 42)
 }
 
@@ -347,8 +347,9 @@ func TestConvertFromStringToIntWithReflectValues(t *testing.T) {
 	typeStr := reflect.TypeOf(source.Foo)
 	typeInt := reflect.TypeOf(dest.Foo)
 	m.register(
-		typeStr, typeInt,
-		func(src, dst reflect.Value) error {
+		typeInt,
+		typeStr,
+		func(dst, src reflect.Value) error {
 			str := src.Interface().(string)
 			i, err := strconv.Atoi(str)
 			if err != nil {
@@ -358,7 +359,7 @@ func TestConvertFromStringToIntWithReflectValues(t *testing.T) {
 			return nil
 		},
 	)
-	m.Map(source, &dest)
+	m.Map(&dest, source)
 	assertEqual(t, dest.Foo, 42)
 }
 
@@ -374,9 +375,9 @@ func TestExplicitConversionTakesPriority(t *testing.T) {
 	m := Mapper{}
 	// If this is used, the result would be 42
 	m.Register(
-		reflect.TypeOf(source.Foo),
 		reflect.TypeOf(dest.Foo),
-		func(src, dst interface{}) error {
+		reflect.TypeOf(source.Foo),
+		func(dst, src interface{}) error {
 			a := src.(string)
 			b := dst.(*int)
 			var err error
@@ -386,9 +387,9 @@ func TestExplicitConversionTakesPriority(t *testing.T) {
 	)
 	// If this is used, the result would be 43
 	m.Register(
-		reflect.TypeOf(source),
 		reflect.TypeOf(dest),
-		func(src, dst interface{}) error {
+		reflect.TypeOf(source),
+		func(dst, src interface{}) error {
 			a := src.(struct{ Foo string })
 			b := dst.(*struct{ Foo int })
 			var err error
@@ -397,7 +398,7 @@ func TestExplicitConversionTakesPriority(t *testing.T) {
 			return err
 		},
 	)
-	m.Map(source, &dest)
+	m.Map(&dest, source)
 	assertEqual(t, dest.Foo, 43)
 }
 
@@ -411,16 +412,16 @@ func TestConversionError(t *testing.T) {
 	m := Mapper{}
 	// If this is used, the result would be 43
 	m.Register(
-		reflect.TypeOf(source.Foo),
 		reflect.TypeOf(dest.Foo),
-		func(src, dst interface{}) error {
+		reflect.TypeOf(source.Foo),
+		func(dst, src interface{}) error {
 			return ErrValidation
 		},
 	)
-	err := m.Map(source, &dest)
+	err := m.Map(&dest, source)
 	assertError(t, err)
 	fmt.Printf("T: %T", err)
-	assertEqual(t, err, StructError{Fields: []FieldError{{Field: "Foo", Err: ErrValidation}}})
+	assertEqual(t, err, StructError{Fields: []FieldError{{field: "Foo", err: ErrValidation}}})
 	// assertNoError(t, )
 	assertEqual(t, dest.Foo, 0)
 }
