@@ -8,4 +8,5 @@ data.
 
 > [!NOTE]
 > There is a v2 in progress which supports custom type mapping, e.g. mapping
-> from strings to integers, etc.
+> from strings to integers, etc. See
+> [`v2`](https://github.com/stroiman/go-automapper/tree/v2)
