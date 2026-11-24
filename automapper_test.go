@@ -15,7 +15,7 @@ func TestPanicWhenDestIsNotPointer(t *testing.T) {
 	t.Error("Should have panicked")
 }
 
-func isNil(got any) bool {
+func isNil(got interface{}) bool {
 	if got == nil {
 		return true
 	}
@@ -26,7 +26,7 @@ func isNil(got any) bool {
 	return false
 }
 
-func assertNil(t testing.TB, got any) {
+func assertNil(t testing.TB, got interface{}) {
 	t.Helper()
 	if isNil(got) {
 		return
@@ -34,7 +34,7 @@ func assertNil(t testing.TB, got any) {
 	t.Errorf("Expected nil value - got: %v", got)
 }
 
-func assertNotNil(t testing.TB, got any) {
+func assertNotNil(t testing.TB, got interface{}) {
 	t.Helper()
 	if !isNil(got) {
 		return
@@ -42,7 +42,7 @@ func assertNotNil(t testing.TB, got any) {
 	t.Errorf("Expected non-nil value")
 }
 
-func assertEqual(t testing.TB, got, want any) {
+func assertEqual(t testing.TB, got, want interface{}) {
 	t.Helper()
 
 	if reflect.DeepEqual(got, want) {
