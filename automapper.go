@@ -8,12 +8,26 @@
 //
 // This package uses reflection to perform mapping which should be fine for
 // all but the most demanding applications.
+//
+// # Interface inconsistency
+//
+// Beware of inconsistencies in the interface. The global Map functions takes
+// arguments (src, dst). But the [Mapper.Map] method takes (dst, src).
+//
+// Originally (src, dst) seemed more natural; but Go's copy function uses (dst,
+// src). I decided to prefer consistency with Go's interface, but keep this
+// library backwards compatible.
 package automapper
 
 import (
 	"fmt"
 	"reflect"
 )
+
+var defaultMapper = Mapper{}
+
+// DefaultMapper is the mapper being used with the Map function
+var DefaultMapper = &defaultMapper
 
 // Map fills out the fields in dest with values from source. All fields in the
 // destination object must exist in the source object.
@@ -30,7 +44,20 @@ import (
 // destination to ensure that a renamed field in either the source or
 // destination does not result in subtle silent bug.
 func Map(source, dest interface{}) {
-	Mapper{}.Map(dest, source)
+	DefaultMapper.Map(dest, source)
+}
+
+// MapLoose works just like Map, except it doesn't fail when the destination
+// type contains fields not supplied by the source.
+//
+// This function is meant to be a temporary solution - the general idea is
+// that the Map function should take a number of options that can modify its
+// behavior - but I'd rather not add that functionality before I have a better
+// idea what is a good options format.
+func MapLoose(source, dest interface{}) {
+	m := defaultMapper
+	m.loose = true
+	m.Map(dest, source)
 }
 
 // Map maps from src to dst.
@@ -48,23 +75,6 @@ func (m Mapper) Map(dst, src interface{}) error {
 	return m.mapValues(destVal, sourceVal)
 }
 
-// MapLoose works just like Map, except it doesn't fail when the destination
-// type contains fields not supplied by the source.
-//
-// This function is meant to be a temporary solution - the general idea is
-// that the Map function should take a number of options that can modify its
-// behavior - but I'd rather not add that functionality before I have a better
-// idea what is a good options format.
-func MapLoose(source, dest interface{}) {
-	var destType = reflect.TypeOf(dest)
-	if destType.Kind() != reflect.Ptr {
-		panic("Dest must be a pointer type")
-	}
-	var sourceVal = reflect.ValueOf(source)
-	var destVal = reflect.ValueOf(dest).Elem()
-	Mapper{loose: true}.mapValues(destVal, sourceVal)
-}
-
 type typeMapKey struct {
 	srcType reflect.Type
 	dstType reflect.Type
@@ -77,6 +87,20 @@ type innerTypeMapper = func(src, dst reflect.Value) error
 type Mapper struct {
 	loose       bool
 	typeMappers map[typeMapKey]innerTypeMapper
+}
+
+type MapperOpt func(*Mapper)
+
+func IgnoreMissingFields(m *Mapper) {
+	m.loose = true
+}
+
+func New(opts ...MapperOpt) Mapper {
+	m := Mapper{}
+	for _, o := range opts {
+		o(&m)
+	}
+	return m
 }
 
 // Registers a type mapper working on reflect.Value instances.

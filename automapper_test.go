@@ -311,6 +311,21 @@ func TestWithLooseOption(t *testing.T) {
 	assertEqual(t, dest.Bar, 0)
 }
 
+func TestMapperWithLooseOption(t *testing.T) {
+	m := New(IgnoreMissingFields)
+	source := struct {
+		Foo string
+		Baz int
+	}{"Foo", 42}
+	dest := struct {
+		Foo string
+		Bar int
+	}{}
+	m.Map(&dest, &source)
+	assertEqual(t, dest.Foo, "Foo")
+	assertEqual(t, dest.Bar, 0)
+}
+
 func TestConvertFromStringToInt(t *testing.T) {
 	source := struct {
 		Foo string
