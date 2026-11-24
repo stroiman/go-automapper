@@ -20,7 +20,7 @@ func isNil(got interface{}) bool {
 		return true
 	}
 	v := reflect.ValueOf(got)
-	if v.Type().Kind() == reflect.Pointer && v.IsNil() {
+	if v.Type().Kind() == reflect.Ptr && v.IsNil() {
 		return true
 	}
 	return false
