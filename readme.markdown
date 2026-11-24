@@ -76,7 +76,8 @@ func init() {
 ### Useful errors
 
 The error returned from `Map()` decorates the conversion errors with information
-about which field name/slice index with invalid data.
+about which field name/slice index with invalid data. It will also include _all_
+conversion errors, not just the first encountered.
 
 This allows automatically showing relevant validation errors in HTML forms,
 e.g., if form field names map directly to struct field names.
