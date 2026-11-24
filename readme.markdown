@@ -49,7 +49,7 @@ type User struct {
     Age       int
 }
 
-func StrToInt(dst, src any) error {
+func StrToInt(_ context.Context, dst, src any) error {
     a := src.(string)
     b := dst.(*int)
     var err error
@@ -62,6 +62,8 @@ var formsMapper automapper.Mapper
 func ParseForm(f FormData) (User, error) {
     var user User
     err := formsMapper.Map(&user, f)
+    // Or with a context.Context
+    // err := formsMapper.MapContext(ctx, &user, f)
     return user, err
 }
 
@@ -72,6 +74,13 @@ func init() {
         StrToInt)
 }
 ```
+
+### Context support
+
+`MapContext` accepts a `context.Context`, passing it to the relevant mapper
+functions. The motivating use case is localization, when parsing data in
+human-readable format into machine-readable format depends on the locale of the
+current user.
 
 ### Useful errors
 

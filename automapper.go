@@ -20,6 +20,7 @@
 package automapper
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 )
@@ -66,13 +67,17 @@ func MapLoose(source, dest interface{}) {
 // mapping is not possible because of incompatible values, e.g. string-to-int
 // conversion fails, it returns an error.
 func (m Mapper) Map(dst, src interface{}) error {
+	return m.MapContext(context.Background(), dst, src)
+}
+
+func (m Mapper) MapContext(ctx context.Context, dst, src interface{}) error {
 	var destType = reflect.TypeOf(dst)
 	if destType.Kind() != reflect.Ptr {
 		panic("Dest must be a pointer type")
 	}
 	var sourceVal = reflect.ValueOf(src)
 	var destVal = reflect.ValueOf(dst).Elem()
-	return m.mapValues(destVal, sourceVal)
+	return m.mapValues(ctx, destVal, sourceVal)
 }
 
 type typeMapKey struct {
@@ -80,9 +85,11 @@ type typeMapKey struct {
 	dstType reflect.Type
 }
 
+type TypeMapperContext = func(ctx context.Context, src, dst interface{}) error
+
 type TypeMapper = func(src, dst interface{}) error
 
-type innerTypeMapper = func(src, dst reflect.Value) error
+type innerTypeMapper = func(ctx context.Context, src, dst reflect.Value) error
 
 type Mapper struct {
 	loose       bool
@@ -122,6 +129,17 @@ func (m *Mapper) register(dstType, srcType reflect.Type, fn innerTypeMapper) {
 	m.typeMappers[key] = fn
 }
 
+func (m *Mapper) RegisterContext(dstType, srcType reflect.Type, fn TypeMapperContext) {
+	m.register(dstType, srcType, func(ctx context.Context, dst, src reflect.Value) error {
+		dstPtr := reflect.New(dstType)
+		err := fn(ctx, dstPtr.Interface(), src.Interface())
+		if err == nil {
+			dst.Set(dstPtr.Elem())
+		}
+		return err
+	})
+}
+
 // Register adds a custom function for converting between two types, e.g.
 // between a string and int. The conversion function fn receives two arguments,
 // src and dst. Src will contain the source value, and dest will contain a
@@ -140,14 +158,13 @@ func (m *Mapper) register(dstType, srcType reflect.Type, fn innerTypeMapper) {
 //			})
 //
 // Note: The library works with go 1.17, the example just use newer go-syntax for simplicity.
+//
+// # Context aware mapping functions
+//
+// If the mapping functions need access to the current context, use RegisterContext.
 func (m *Mapper) Register(dstType, srcType reflect.Type, fn TypeMapper) {
-	m.register(dstType, srcType, func(dst, src reflect.Value) error {
-		dstPtr := reflect.New(dstType)
-		err := fn(dstPtr.Interface(), src.Interface())
-		if err == nil {
-			dst.Set(dstPtr.Elem())
-		}
-		return err
+	m.RegisterContext(dstType, srcType, func(_ context.Context, dst, src interface{}) error {
+		return fn(dst, src)
 	})
 }
 
@@ -160,19 +177,19 @@ func (m *Mapper) compatibleConversion(dstType reflect.Type) (reflect.Type, inner
 	return nil, nil, false
 }
 
-func (m Mapper) mapValues(destVal, sourceVal reflect.Value) error {
+func (m Mapper) mapValues(ctx context.Context, destVal, sourceVal reflect.Value) error {
 	destType := destVal.Type()
 	srcType := sourceVal.Type()
 
 	if m, ok := m.typeMappers[typeMapKey{srcType, destType}]; ok {
-		return m(destVal, sourceVal)
+		return m(ctx, destVal, sourceVal)
 	}
 
 	if targetDstType, m, ok := m.compatibleConversion(destType); ok {
 		// Is there a compatible conversion, e.g. a string->int conversion, but
 		// the target has `type IntType int` ?
 		v := reflect.New(targetDstType)
-		err := m(v.Elem(), sourceVal)
+		err := m(ctx, v.Elem(), sourceVal)
 		if err == nil {
 			destVal.Set(v.Elem().Convert(destVal.Type()))
 		}
@@ -189,7 +206,7 @@ func (m Mapper) mapValues(destVal, sourceVal reflect.Value) error {
 		var errs []FieldError
 		for i := 0; i < destVal.NumField(); i++ {
 			field := destType.Field(i)
-			if err := m.mapField(destVal, sourceVal, i); err != nil {
+			if err := m.mapField(ctx, destVal, sourceVal, i); err != nil {
 				errs = append(errs, FieldError{field: field.Name, err: err})
 			}
 		}
@@ -205,31 +222,31 @@ func (m Mapper) mapValues(destVal, sourceVal reflect.Value) error {
 			return nil
 		}
 		val := reflect.New(destType.Elem())
-		err := m.mapValues(val.Elem(), sourceVal)
+		err := m.mapValues(ctx, val.Elem(), sourceVal)
 		destVal.Set(val)
 		return err
 	} else if destType.Kind() == reflect.Slice {
-		return m.mapSlice(sourceVal, destVal)
+		return m.mapSlice(ctx, sourceVal, destVal)
 	} else {
 		panic("Currently not supported")
 	}
 }
 
-func (m Mapper) mapSlice(sourceVal, destVal reflect.Value) error {
+func (m Mapper) mapSlice(ctx context.Context, sourceVal, destVal reflect.Value) error {
 	destType := destVal.Type()
 	length := sourceVal.Len()
 	target := reflect.MakeSlice(destType, length, length)
 	errs := make([]SliceElementError, 0, length)
 	for j := 0; j < length; j++ {
 		val := reflect.New(destType.Elem()).Elem()
-		if err := m.mapValues(val, sourceVal.Index(j)); err != nil {
+		if err := m.mapValues(ctx, val, sourceVal.Index(j)); err != nil {
 			errs = append(errs, SliceElementError{Index: j, Err: err})
 		}
 		target.Index(j).Set(val)
 	}
 
 	if length == 0 {
-		m.verifyArrayTypesAreCompatible(sourceVal, destVal)
+		m.verifyArrayTypesAreCompatible(ctx, sourceVal, destVal)
 	}
 	destVal.Set(target)
 	if len(errs) > 0 {
@@ -238,13 +255,16 @@ func (m Mapper) mapSlice(sourceVal, destVal reflect.Value) error {
 	return nil
 }
 
-func (m Mapper) verifyArrayTypesAreCompatible(sourceVal, destVal reflect.Value) {
+func (m Mapper) verifyArrayTypesAreCompatible(
+	ctx context.Context,
+	sourceVal, destVal reflect.Value,
+) {
 	dummyDest := reflect.New(reflect.PtrTo(destVal.Type()))
 	dummySource := reflect.MakeSlice(sourceVal.Type(), 1, 1)
-	m.mapValues(dummyDest.Elem(), dummySource)
+	m.mapValues(ctx, dummyDest.Elem(), dummySource)
 }
 
-func (m Mapper) mapField(dstStruct, srcStruct reflect.Value, i int) error {
+func (m Mapper) mapField(ctx context.Context, dstStruct, srcStruct reflect.Value, i int) error {
 	destType := dstStruct.Type()
 	dstField := destType.Field(i)
 	fieldName := dstField.Name
@@ -264,7 +284,7 @@ func (m Mapper) mapField(dstStruct, srcStruct reflect.Value, i int) error {
 
 	dstValue := dstStruct.Field(i)
 	if destType.Field(i).Anonymous {
-		return m.mapValues(dstValue, srcStruct)
+		return m.mapValues(ctx, dstValue, srcStruct)
 	} else {
 		if valueIsContainedInNilEmbeddedType(srcStruct, fieldName) {
 			return nil
@@ -275,7 +295,7 @@ func (m Mapper) mapField(dstStruct, srcStruct reflect.Value, i int) error {
 				return nil
 			}
 			if dstValue.Kind() == reflect.Struct {
-				return m.mapValues(dstValue, srcStruct)
+				return m.mapValues(ctx, dstValue, srcStruct)
 			} else {
 				for i := 0; i < srcStruct.NumField(); i++ {
 					if srcStruct.Field(i).Kind() != reflect.Struct {
@@ -288,7 +308,7 @@ func (m Mapper) mapField(dstStruct, srcStruct reflect.Value, i int) error {
 				}
 			}
 		}
-		return m.mapValues(dstValue, sourceField)
+		return m.mapValues(ctx, dstValue, sourceField)
 	}
 }
 

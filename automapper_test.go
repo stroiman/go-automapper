@@ -3,6 +3,7 @@
 package automapper
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -364,7 +365,7 @@ func TestConvertFromStringToIntWithReflectValues(t *testing.T) {
 	m.register(
 		typeInt,
 		typeStr,
-		func(dst, src reflect.Value) error {
+		func(_ context.Context, dst, src reflect.Value) error {
 			str := src.Interface().(string)
 			i, err := strconv.Atoi(str)
 			if err != nil {
@@ -429,10 +430,10 @@ func TestConversionWithBaseType(t *testing.T) {
 	m := Mapper{}
 	// If this is used, the result would be 43
 	var i int
-	m.Register(
+	m.RegisterContext(
 		reflect.TypeOf(i),
 		reflect.TypeOf(source.Foo),
-		func(dst, src interface{}) error {
+		func(_ context.Context, dst, src interface{}) error {
 			a := src.(string)
 			b := dst.(*int)
 			var err error
@@ -457,9 +458,7 @@ func TestConversionError(t *testing.T) {
 	m.Register(
 		reflect.TypeOf(dest.Foo),
 		reflect.TypeOf(source.Foo),
-		func(dst, src interface{}) error {
-			return ErrValidation
-		},
+		func(dst, src interface{}) error { return ErrValidation },
 	)
 	err := m.Map(&dest, source)
 	assertError(t, err)
