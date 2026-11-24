@@ -8,8 +8,8 @@ data.
 
 ## V2
 
-The major change is the ability to specify how different types are mapped,
-making this useful also for validation.
+The major change is the ability for client code to provide custom conversions
+between types where direct conversion isn't possible.
 
 > [!CAUTION]
 > Be aware of inconsistencies in argument order!
