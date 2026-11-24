@@ -4,7 +4,6 @@ package automapper
 
 import (
 	"reflect"
-	"strconv"
 	"testing"
 )
 
@@ -309,10 +308,4 @@ type SourceTypeA struct {
 type DestTypeA struct {
 	Foo int
 	Bar string
-}
-
-type IntString string
-
-func (s IntString) Decode() (int, error) {
-	return strconv.Atoi(string(s))
 }
