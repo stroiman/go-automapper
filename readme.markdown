@@ -6,10 +6,16 @@ Go-automapper can automatically map data between different types with
 identically named fields in GO. Useful for initializing DTO types from build in
 data.
 
-## V2
+## "V2"
 
 The major change is the ability for client code to provide custom conversions
 between types where direct conversion isn't possible.
+
+Install with
+
+```sh
+go get github.com/stroiman/go-automapper@next
+```
 
 > [!CAUTION]
 > Be aware of inconsistencies in argument order!
