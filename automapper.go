@@ -65,16 +65,22 @@ type typeMapKey struct {
 	dstType reflect.Type
 }
 
-type typeMapper = func(src, dst interface{}) error
+type TypeMapper = func(src, dst interface{}) error
+
+type innerTypeMapper = func(src, dst reflect.Value) error
 
 type Mapper struct {
 	loose       bool
-	typeMappers map[typeMapKey]typeMapper
+	typeMappers map[typeMapKey]innerTypeMapper
 }
 
-func (m *Mapper) Register(srcType, dstType reflect.Type, fn typeMapper) {
+// Registers a type mapper working on reflect.Value instances. We could export
+// this, but I want to keep the interface minimal, and the exported version is
+// more user friendly; client code is expressed in normal go-syntax; you don't
+// need to learn the reflect API to use it.
+func (m *Mapper) register(srcType, dstType reflect.Type, fn innerTypeMapper) {
 	if m.typeMappers == nil {
-		m.typeMappers = make(map[typeMapKey]typeMapper)
+		m.typeMappers = make(map[typeMapKey]innerTypeMapper)
 	}
 	key := typeMapKey{srcType, dstType}
 	if _, exists := m.typeMappers[key]; exists {
@@ -83,16 +89,44 @@ func (m *Mapper) Register(srcType, dstType reflect.Type, fn typeMapper) {
 	m.typeMappers[key] = fn
 }
 
+// Register adds a custom function for converting between two types, e.g.
+// between a string and int. The conversion function fn receives two arguments,
+// src and dst. Src will contain the source value, and dest will contain a
+// pointer to the destination value.
+//
+// # Example - convert from string to integers
+//
+//		var m automapper.Mapper
+//		m.Register(
+//			reflect.TypeFor[string](), reflect.TypeFor[int](),
+//			func(src, dst any) error {
+//	 		s := src.(string)
+//				d := dst.(*int) // <- pointer value
+//				(*d), err := strconv.Atoi(s)
+//				return err
+//			})
+//
+// Note: newer go-syntax (reflect.TypeFor[]), is used to simplify the example;
+// but the library is compatible with earlier go versions
+func (m *Mapper) Register(srcType, dstType reflect.Type, fn TypeMapper) {
+	m.register(srcType, dstType, func(src, dst reflect.Value) error {
+		dstPtr := reflect.New(dstType)
+		err := fn(src.Interface(), dstPtr.Interface())
+		if err == nil {
+			dst.Set(dstPtr.Elem())
+		}
+		return err
+	})
+}
+
 func (m Mapper) mapValues(sourceVal, destVal reflect.Value) {
 	destType := destVal.Type()
 	srcType := sourceVal.Type()
+
 	if m, ok := m.typeMappers[typeMapKey{srcType, destType}]; ok {
-		dstPtr := reflect.New(destType)
-		err := m(sourceVal.Interface(), dstPtr.Interface())
-		if err != nil {
+		if err := m(sourceVal, destVal); err != nil {
 			panic("Conversion error")
 		}
-		destVal.Set(dstPtr.Elem())
 		return
 	}
 	if destType.Kind() == reflect.Struct {

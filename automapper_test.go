@@ -316,6 +316,32 @@ func TestConvertFromStringToInt(t *testing.T) {
 	assertEqual(t, dest.Foo, 42)
 }
 
+func TestConvertFromStringToIntWithReflectValues(t *testing.T) {
+	source := struct {
+		Foo string
+	}{"42"}
+	dest := struct {
+		Foo int
+	}{}
+	m := Mapper{}
+	typeStr := reflect.TypeOf(source.Foo)
+	typeInt := reflect.TypeOf(dest.Foo)
+	m.register(
+		typeStr, typeInt,
+		func(src, dst reflect.Value) error {
+			str := src.Interface().(string)
+			i, err := strconv.Atoi(str)
+			if err != nil {
+				return err
+			}
+			dst.Set(reflect.ValueOf(i))
+			return nil
+		},
+	)
+	m.Map(source, &dest)
+	assertEqual(t, dest.Foo, 42)
+}
+
 func TestExplicitConversionTakesPriority(t *testing.T) {
 	// If client code specifies explicit conversion between two struct types,
 	// let that take priority.
