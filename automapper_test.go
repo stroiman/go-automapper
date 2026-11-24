@@ -417,6 +417,34 @@ func TestExplicitConversionTakesPriority(t *testing.T) {
 	assertEqual(t, dest.Foo, 43)
 }
 
+type NewIntType int
+
+func TestConversionWithBaseType(t *testing.T) {
+	source := struct {
+		Foo string
+	}{"42"}
+	dest := struct {
+		Foo NewIntType
+	}{}
+	m := Mapper{}
+	// If this is used, the result would be 43
+	var i int
+	m.Register(
+		reflect.TypeOf(i),
+		reflect.TypeOf(source.Foo),
+		func(dst, src interface{}) error {
+			a := src.(string)
+			b := dst.(*int)
+			var err error
+			*b, err = strconv.Atoi(a)
+			return err
+		},
+	)
+	err := m.Map(&dest, source)
+	assertNoError(t, err)
+	assertEqual(t, dest.Foo, NewIntType(42))
+}
+
 func TestConversionError(t *testing.T) {
 	source := struct {
 		Foo string

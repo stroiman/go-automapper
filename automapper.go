@@ -158,6 +158,16 @@ func (m Mapper) mapValues(destVal, sourceVal reflect.Value) error {
 	if m, ok := m.typeMappers[typeMapKey{srcType, destType}]; ok {
 		return m(destVal, sourceVal)
 	}
+	for k, g := range m.typeMappers {
+		if k.dstType.ConvertibleTo(destVal.Type()) {
+			v := reflect.New(k.dstType)
+			err := g(v.Elem(), sourceVal)
+			if err == nil {
+				destVal.Set(v.Elem().Convert(destVal.Type()))
+			}
+			return err
+		}
+	}
 	if destType.Kind() == reflect.Struct {
 		if sourceVal.Type().Kind() == reflect.Ptr {
 			if sourceVal.IsNil() {
