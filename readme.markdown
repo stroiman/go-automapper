@@ -5,3 +5,7 @@
 Go-automapper can automatically map data between different types with
 identically named fields in GO. Useful for initializing DTO types from build in
 data.
+
+> [!NOTE]
+> There is a v2 in progress which supports custom type mapping, e.g. mapping
+> from strings to integers, etc.
