@@ -24,8 +24,8 @@ go get github.com/stroiman/go-automapper@next
 > `Mapper` type has `Mapper.Map(dest, source)`.
 >
 > The original function is left unchanged for compatibility reasons, but the new
-> signature was chosen to align with other go functions, e.g. the buildin `copy`
-> function.
+> signature was chosen be consistent with native go conventions. E.g. the
+> buildin `copy` function, or `maps.Copy` both take `dst, src`.
 
 > [!NOTE]
 > As such, this version _isn't yet_ breaking backwards compatibility, but at the
