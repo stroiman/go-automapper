@@ -36,7 +36,7 @@ func Map(source, dest interface{}) {
 	}
 	var sourceVal = reflect.ValueOf(source)
 	var destVal = reflect.ValueOf(dest).Elem()
-	mapper{}.mapValues(sourceVal, destVal)
+	Mapper{}.mapValues(sourceVal, destVal)
 }
 
 // MapLoose works just like Map, except it doesn't fail when the destination
@@ -53,14 +53,14 @@ func MapLoose(source, dest interface{}) {
 	}
 	var sourceVal = reflect.ValueOf(source)
 	var destVal = reflect.ValueOf(dest).Elem()
-	mapper{loose: true}.mapValues(sourceVal, destVal)
+	Mapper{loose: true}.mapValues(sourceVal, destVal)
 }
 
-type mapper struct {
+type Mapper struct {
 	loose bool
 }
 
-func (m mapper) mapValues(sourceVal, destVal reflect.Value) {
+func (m Mapper) mapValues(sourceVal, destVal reflect.Value) {
 	destType := destVal.Type()
 	if destType.Kind() == reflect.Struct {
 		if sourceVal.Type().Kind() == reflect.Ptr {
@@ -89,7 +89,7 @@ func (m mapper) mapValues(sourceVal, destVal reflect.Value) {
 	}
 }
 
-func (m mapper) mapSlice(sourceVal, destVal reflect.Value) {
+func (m Mapper) mapSlice(sourceVal, destVal reflect.Value) {
 	destType := destVal.Type()
 	length := sourceVal.Len()
 	target := reflect.MakeSlice(destType, length, length)
@@ -105,13 +105,13 @@ func (m mapper) mapSlice(sourceVal, destVal reflect.Value) {
 	destVal.Set(target)
 }
 
-func (m mapper) verifyArrayTypesAreCompatible(sourceVal, destVal reflect.Value) {
+func (m Mapper) verifyArrayTypesAreCompatible(sourceVal, destVal reflect.Value) {
 	dummyDest := reflect.New(reflect.PtrTo(destVal.Type()))
 	dummySource := reflect.MakeSlice(sourceVal.Type(), 1, 1)
 	m.mapValues(dummySource, dummyDest.Elem())
 }
 
-func (m mapper) mapField(source, destVal reflect.Value, i int) {
+func (m Mapper) mapField(source, destVal reflect.Value, i int) {
 	destType := destVal.Type()
 	fieldName := destType.Field(i).Name
 	defer func() {
