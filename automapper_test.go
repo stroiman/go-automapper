@@ -4,6 +4,7 @@ package automapper
 
 import (
 	"reflect"
+	"strconv"
 	"testing"
 )
 
@@ -290,6 +291,29 @@ func TestWithLooseOption(t *testing.T) {
 	MapLoose(&source, &dest)
 	assertEqual(t, dest.Foo, "Foo")
 	assertEqual(t, dest.Bar, 0)
+}
+
+func TestConvertFromStringToInt(t *testing.T) {
+	source := struct {
+		Foo string
+	}{"42"}
+	dest := struct {
+		Foo int
+	}{}
+	m := Mapper{}
+	m.Register(
+		reflect.TypeOf(source.Foo),
+		reflect.TypeOf(dest.Foo),
+		func(src, dst interface{}) error {
+			a := src.(string)
+			b := dst.(*int)
+			var err error
+			*b, err = strconv.Atoi(a)
+			return err
+		},
+	)
+	m.Map(source, &dest)
+	assertEqual(t, dest.Foo, 42)
 }
 
 type SourceParent struct {

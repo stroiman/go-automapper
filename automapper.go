@@ -30,13 +30,17 @@ import (
 // destination to ensure that a renamed field in either the source or
 // destination does not result in subtle silent bug.
 func Map(source, dest interface{}) {
+	Mapper{}.Map(source, dest)
+}
+
+func (m Mapper) Map(source, dest interface{}) {
 	var destType = reflect.TypeOf(dest)
 	if destType.Kind() != reflect.Ptr {
 		panic("Dest must be a pointer type")
 	}
 	var sourceVal = reflect.ValueOf(source)
 	var destVal = reflect.ValueOf(dest).Elem()
-	Mapper{}.mapValues(sourceVal, destVal)
+	m.mapValues(sourceVal, destVal)
 }
 
 // MapLoose works just like Map, except it doesn't fail when the destination
@@ -56,8 +60,27 @@ func MapLoose(source, dest interface{}) {
 	Mapper{loose: true}.mapValues(sourceVal, destVal)
 }
 
+type typeMapKey struct {
+	srcType reflect.Type
+	dstType reflect.Type
+}
+
+type typeMapper = func(src, dst interface{}) error
+
 type Mapper struct {
-	loose bool
+	loose       bool
+	typeMappers map[typeMapKey]typeMapper
+}
+
+func (m *Mapper) Register(srcType, dstType reflect.Type, fn typeMapper) {
+	if m.typeMappers == nil {
+		m.typeMappers = make(map[typeMapKey]typeMapper)
+	}
+	key := typeMapKey{srcType, dstType}
+	if _, exists := m.typeMappers[key]; exists {
+		panic(fmt.Sprintf("automapper: a converter already exists from %v to %v", srcType, dstType))
+	}
+	m.typeMappers[key] = fn
 }
 
 func (m Mapper) mapValues(sourceVal, destVal reflect.Value) {
@@ -85,7 +108,18 @@ func (m Mapper) mapValues(sourceVal, destVal reflect.Value) {
 	} else if destType.Kind() == reflect.Slice {
 		m.mapSlice(sourceVal, destVal)
 	} else {
-		panic("Currently not supported")
+		srcType := sourceVal.Type()
+		fmt.Printf("Src: %v\nDst: %v\n", srcType, destType)
+		if m, ok := m.typeMappers[typeMapKey{srcType, destType}]; ok {
+			dstPtr := reflect.New(destType)
+			err := m(sourceVal.Interface(), dstPtr.Interface())
+			if err != nil {
+				panic("Conversion error")
+			}
+			destVal.Set(dstPtr.Elem())
+		} else {
+			panic("Currently not supported")
+		}
 	}
 }
 
