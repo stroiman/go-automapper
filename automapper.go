@@ -85,6 +85,16 @@ func (m *Mapper) Register(srcType, dstType reflect.Type, fn typeMapper) {
 
 func (m Mapper) mapValues(sourceVal, destVal reflect.Value) {
 	destType := destVal.Type()
+	srcType := sourceVal.Type()
+	if m, ok := m.typeMappers[typeMapKey{srcType, destType}]; ok {
+		dstPtr := reflect.New(destType)
+		err := m(sourceVal.Interface(), dstPtr.Interface())
+		if err != nil {
+			panic("Conversion error")
+		}
+		destVal.Set(dstPtr.Elem())
+		return
+	}
 	if destType.Kind() == reflect.Struct {
 		if sourceVal.Type().Kind() == reflect.Ptr {
 			if sourceVal.IsNil() {
@@ -108,18 +118,7 @@ func (m Mapper) mapValues(sourceVal, destVal reflect.Value) {
 	} else if destType.Kind() == reflect.Slice {
 		m.mapSlice(sourceVal, destVal)
 	} else {
-		srcType := sourceVal.Type()
-		fmt.Printf("Src: %v\nDst: %v\n", srcType, destType)
-		if m, ok := m.typeMappers[typeMapKey{srcType, destType}]; ok {
-			dstPtr := reflect.New(destType)
-			err := m(sourceVal.Interface(), dstPtr.Interface())
-			if err != nil {
-				panic("Conversion error")
-			}
-			destVal.Set(dstPtr.Elem())
-		} else {
-			panic("Currently not supported")
-		}
+		panic("Currently not supported")
 	}
 }
 

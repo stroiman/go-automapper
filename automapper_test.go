@@ -316,6 +316,45 @@ func TestConvertFromStringToInt(t *testing.T) {
 	assertEqual(t, dest.Foo, 42)
 }
 
+func TestExplicitConversionTakesPriority(t *testing.T) {
+	// If client code specifies explicit conversion between two struct types,
+	// let that take priority.
+	source := struct {
+		Foo string
+	}{"42"}
+	dest := struct {
+		Foo int
+	}{}
+	m := Mapper{}
+	// If this is used, the result would be 42
+	m.Register(
+		reflect.TypeOf(source.Foo),
+		reflect.TypeOf(dest.Foo),
+		func(src, dst interface{}) error {
+			a := src.(string)
+			b := dst.(*int)
+			var err error
+			*b, err = strconv.Atoi(a)
+			return err
+		},
+	)
+	// If this is used, the result would be 43
+	m.Register(
+		reflect.TypeOf(source),
+		reflect.TypeOf(dest),
+		func(src, dst interface{}) error {
+			a := src.(struct{ Foo string })
+			b := dst.(*struct{ Foo int })
+			var err error
+			(*b).Foo, err = strconv.Atoi(a.Foo)
+			b.Foo++
+			return err
+		},
+	)
+	m.Map(source, &dest)
+	assertEqual(t, dest.Foo, 43)
+}
+
 type SourceParent struct {
 	Children []SourceTypeA
 }
