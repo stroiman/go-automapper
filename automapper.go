@@ -129,6 +129,11 @@ func (m *Mapper) register(dstType, srcType reflect.Type, fn innerTypeMapper) {
 	m.typeMappers[key] = fn
 }
 
+// RegisterContext works like [Mapper.Register], but for mapping functions that
+// accept a context.Context as argument.
+//
+// The motivating use case for passing the context to conversion functions would
+// be localization, if parsing on the source data depends on the user's locale.
 func (m *Mapper) RegisterContext(dstType, srcType reflect.Type, fn TypeMapperContext) {
 	m.register(dstType, srcType, func(ctx context.Context, dst, src reflect.Value) error {
 		dstPtr := reflect.New(dstType)
