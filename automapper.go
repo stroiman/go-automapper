@@ -74,10 +74,14 @@ type Mapper struct {
 	typeMappers map[typeMapKey]innerTypeMapper
 }
 
-// Registers a type mapper working on reflect.Value instances. We could export
-// this, but I want to keep the interface minimal, and the exported version is
-// more user friendly; client code is expressed in normal go-syntax; you don't
-// need to learn the reflect API to use it.
+// Registers a type mapper working on reflect.Value instances.
+//
+// This could potentially be exported, but I prefer to keep the interface
+// minimal to avoid future breaking changes, and I see no need to export this.
+//
+// The exported Register function is easier to use from client code, as you only
+// need to express yourself in Go-syntax, and not learn the details of the reflect
+// API.
 func (m *Mapper) register(srcType, dstType reflect.Type, fn innerTypeMapper) {
 	if m.typeMappers == nil {
 		m.typeMappers = make(map[typeMapKey]innerTypeMapper)
@@ -106,8 +110,7 @@ func (m *Mapper) register(srcType, dstType reflect.Type, fn innerTypeMapper) {
 //				return err
 //			})
 //
-// Note: newer go-syntax (reflect.TypeFor[]), is used to simplify the example;
-// but the library is compatible with earlier go versions
+// Note: The library works with go 1.17, the example just use newer go-syntax for simplicity.
 func (m *Mapper) Register(srcType, dstType reflect.Type, fn TypeMapper) {
 	m.register(srcType, dstType, func(src, dst reflect.Value) error {
 		dstPtr := reflect.New(dstType)

@@ -317,6 +317,8 @@ func TestConvertFromStringToInt(t *testing.T) {
 }
 
 func TestConvertFromStringToIntWithReflectValues(t *testing.T) {
+	// This test touches the unexported register, which is currently just an
+	// implementation detail; but could potentially be exported.
 	source := struct {
 		Foo string
 	}{"42"}
