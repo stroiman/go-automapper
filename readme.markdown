@@ -8,11 +8,23 @@ data.
 
 ## V2
 
-This is prerelease, and may end up being merged to existing version with no
-breaking changes.
-
 The major change is the ability to specify how different types are mapped,
 making this useful also for validation.
+
+> [!CAUTION]
+> Be aware of inconsistencies in argument order!
+>
+> The original automapper had the exported function `Map(source, dest)`. The new
+> `Mapper` type has `Mapper.Map(dest, source)`.
+>
+> The original function is left unchanged for compatibility reasons, but the new
+> signature was chosen to align with other go functions, e.g. the buildin `copy`
+> function.
+
+> [!NOTE]
+> As such, this version _isn't yet_ breaking backwards compatibility, but at the
+> cost of inconsistency. I have not yet decided whether to create true v2
+> release, or live with the inconsistencies.
 
 ```go
 // FormData is all strings, this is what we receive from the browser
