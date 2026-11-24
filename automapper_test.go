@@ -3,6 +3,8 @@
 package automapper
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
@@ -41,6 +43,22 @@ func assertNotNil(t testing.TB, got interface{}) {
 		return
 	}
 	t.Errorf("Expected non-nil value")
+}
+
+func assertError(t testing.TB, err error) {
+	t.Helper()
+	if err != nil {
+		return
+	}
+	t.Error("Expected an error, received none")
+}
+
+func assertNoError(t testing.TB, err error) {
+	t.Helper()
+	if err == nil {
+		return
+	}
+	t.Errorf("Unexpected error: %v", err)
 }
 
 func assertEqual(t testing.TB, got, want interface{}) {
@@ -382,6 +400,32 @@ func TestExplicitConversionTakesPriority(t *testing.T) {
 	m.Map(source, &dest)
 	assertEqual(t, dest.Foo, 43)
 }
+
+func TestConversionError(t *testing.T) {
+	source := struct {
+		Foo string
+	}{"not-an-int"}
+	dest := struct {
+		Foo int
+	}{}
+	m := Mapper{}
+	// If this is used, the result would be 43
+	m.Register(
+		reflect.TypeOf(source.Foo),
+		reflect.TypeOf(dest.Foo),
+		func(src, dst interface{}) error {
+			return ErrValidation
+		},
+	)
+	err := m.Map(source, &dest)
+	assertError(t, err)
+	fmt.Printf("T: %T", err)
+	assertEqual(t, err, StructError{Fields: []FieldError{{Field: "Foo", Err: ErrValidation}}})
+	// assertNoError(t, )
+	assertEqual(t, dest.Foo, 0)
+}
+
+var ErrValidation = errors.New("validation")
 
 type SourceParent struct {
 	Children []SourceTypeA

@@ -33,14 +33,19 @@ func Map(source, dest interface{}) {
 	Mapper{}.Map(source, dest)
 }
 
-func (m Mapper) Map(source, dest interface{}) {
-	var destType = reflect.TypeOf(dest)
+// Map maps from src to dst.
+//
+// If mapping is not possible because of incompatible types, Map panics. But if
+// mapping is not possible because of incompatible values, e.g. string-to-int
+// conversion fails, it returns an error.
+func (m Mapper) Map(src, dst interface{}) error {
+	var destType = reflect.TypeOf(dst)
 	if destType.Kind() != reflect.Ptr {
 		panic("Dest must be a pointer type")
 	}
-	var sourceVal = reflect.ValueOf(source)
-	var destVal = reflect.ValueOf(dest).Elem()
-	m.mapValues(sourceVal, destVal)
+	var sourceVal = reflect.ValueOf(src)
+	var destVal = reflect.ValueOf(dst).Elem()
+	return m.mapValues(sourceVal, destVal)
 }
 
 // MapLoose works just like Map, except it doesn't fail when the destination
@@ -122,15 +127,12 @@ func (m *Mapper) Register(srcType, dstType reflect.Type, fn TypeMapper) {
 	})
 }
 
-func (m Mapper) mapValues(sourceVal, destVal reflect.Value) {
+func (m Mapper) mapValues(sourceVal, destVal reflect.Value) error {
 	destType := destVal.Type()
 	srcType := sourceVal.Type()
 
 	if m, ok := m.typeMappers[typeMapKey{srcType, destType}]; ok {
-		if err := m(sourceVal, destVal); err != nil {
-			panic("Conversion error")
-		}
-		return
+		return m(sourceVal, destVal)
 	}
 	if destType.Kind() == reflect.Struct {
 		if sourceVal.Type().Kind() == reflect.Ptr {
@@ -140,32 +142,45 @@ func (m Mapper) mapValues(sourceVal, destVal reflect.Value) {
 			}
 			sourceVal = sourceVal.Elem()
 		}
+		var errs []FieldError
 		for i := 0; i < destVal.NumField(); i++ {
-			m.mapField(sourceVal, destVal, i)
+			field := destType.Field(i)
+			if err := m.mapField(sourceVal, destVal, i); err != nil {
+				errs = append(errs, FieldError{Field: field.Name, Err: err})
+			}
 		}
+		if len(errs) > 0 {
+			return StructError{errs}
+		}
+		return nil
 	} else if destType == sourceVal.Type() {
 		destVal.Set(sourceVal)
+		return nil
 	} else if destType.Kind() == reflect.Ptr {
 		if valueIsNil(sourceVal) {
-			return
+			return nil
 		}
 		val := reflect.New(destType.Elem())
-		m.mapValues(sourceVal, val.Elem())
+		err := m.mapValues(sourceVal, val.Elem())
 		destVal.Set(val)
+		return err
 	} else if destType.Kind() == reflect.Slice {
-		m.mapSlice(sourceVal, destVal)
+		return m.mapSlice(sourceVal, destVal)
 	} else {
 		panic("Currently not supported")
 	}
 }
 
-func (m Mapper) mapSlice(sourceVal, destVal reflect.Value) {
+func (m Mapper) mapSlice(sourceVal, destVal reflect.Value) error {
 	destType := destVal.Type()
 	length := sourceVal.Len()
 	target := reflect.MakeSlice(destType, length, length)
+	errs := make([]error, 0, length)
 	for j := 0; j < length; j++ {
 		val := reflect.New(destType.Elem()).Elem()
-		m.mapValues(sourceVal.Index(j), val)
+		if err := m.mapValues(sourceVal.Index(j), val); err != nil {
+			errs = append(errs, err)
+		}
 		target.Index(j).Set(val)
 	}
 
@@ -173,6 +188,10 @@ func (m Mapper) mapSlice(sourceVal, destVal reflect.Value) {
 		m.verifyArrayTypesAreCompatible(sourceVal, destVal)
 	}
 	destVal.Set(target)
+	if len(errs) > 0 {
+		return SliceError{errs: errs}
+	}
+	return nil
 }
 
 func (m Mapper) verifyArrayTypesAreCompatible(sourceVal, destVal reflect.Value) {
@@ -181,9 +200,10 @@ func (m Mapper) verifyArrayTypesAreCompatible(sourceVal, destVal reflect.Value) 
 	m.mapValues(dummySource, dummyDest.Elem())
 }
 
-func (m Mapper) mapField(source, destVal reflect.Value, i int) {
-	destType := destVal.Type()
-	fieldName := destType.Field(i).Name
+func (m Mapper) mapField(srcStruct, dstStruct reflect.Value, i int) error {
+	destType := dstStruct.Type()
+	dstField := destType.Field(i)
+	fieldName := dstField.Name
 	defer func() {
 		if r := recover(); r != nil {
 			panic(
@@ -191,41 +211,40 @@ func (m Mapper) mapField(source, destVal reflect.Value, i int) {
 					"Error mapping field: %s. DestType: %v. SourceType: %v. Error: %v",
 					fieldName,
 					destType,
-					source.Type(),
+					srcStruct.Type(),
 					r,
 				),
 			)
 		}
 	}()
 
-	destField := destVal.Field(i)
+	dstValue := dstStruct.Field(i)
 	if destType.Field(i).Anonymous {
-		m.mapValues(source, destField)
+		return m.mapValues(srcStruct, dstValue)
 	} else {
-		if valueIsContainedInNilEmbeddedType(source, fieldName) {
-			return
+		if valueIsContainedInNilEmbeddedType(srcStruct, fieldName) {
+			return nil
 		}
-		sourceField := source.FieldByName(fieldName)
+		sourceField := srcStruct.FieldByName(fieldName)
 		if (sourceField == reflect.Value{}) {
 			if m.loose {
-				return
+				return nil
 			}
-			if destField.Kind() == reflect.Struct {
-				m.mapValues(source, destField)
-				return
+			if dstValue.Kind() == reflect.Struct {
+				return m.mapValues(srcStruct, dstValue)
 			} else {
-				for i := 0; i < source.NumField(); i++ {
-					if source.Field(i).Kind() != reflect.Struct {
+				for i := 0; i < srcStruct.NumField(); i++ {
+					if srcStruct.Field(i).Kind() != reflect.Struct {
 						continue
 					}
-					if sourceField = source.Field(i).
+					if sourceField = srcStruct.Field(i).
 						FieldByName(fieldName); (sourceField != reflect.Value{}) {
 						break
 					}
 				}
 			}
 		}
-		m.mapValues(sourceField, destField)
+		return m.mapValues(sourceField, dstValue)
 	}
 }
 
