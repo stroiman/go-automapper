@@ -78,7 +78,8 @@ func init() {
 The error returned from `Map()` decorates the conversion errors with information
 about which field name/slice index with invalid data.
 
-If the structure of the source type matches an HTML form, 
+This allows automatically showing relevant validation errors in HTML forms,
+e.g., if form field names map directly to struct field names.
 
 ### Works for structs too
 
