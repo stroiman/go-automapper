@@ -233,7 +233,7 @@ func (m Mapper) mapValues(ctx context.Context, destVal, sourceVal reflect.Value)
 	} else if destType.Kind() == reflect.Slice {
 		return m.mapSlice(ctx, sourceVal, destVal)
 	} else {
-		panic("Currently not supported")
+		panic(fmt.Sprintf("Not supported: mapping from %v to %v", srcType, destType))
 	}
 }
 
@@ -312,6 +312,9 @@ func (m Mapper) mapField(ctx context.Context, dstStruct, srcStruct reflect.Value
 					}
 				}
 			}
+		}
+		if sourceField == (reflect.Value{}) {
+			panic(fmt.Sprintf("Field not found in source struct: %s", fieldName))
 		}
 		return m.mapValues(ctx, dstValue, sourceField)
 	}
