@@ -312,6 +312,21 @@ func TestWithLooseOption(t *testing.T) {
 	assertEqual(t, dest.Bar, 0)
 }
 
+func TestMapToCompatibleType(t *testing.T) {
+	a := struct {
+		Foo NewIntType
+		Bar int
+	}{42, 43}
+	b := struct {
+		Foo int
+		Bar NewIntType
+	}{}
+
+	Map(a, &b)
+	assertEqual(t, b.Foo, 42)
+	assertEqual(t, b.Bar, NewIntType(43))
+}
+
 func TestMapperWithLooseOption(t *testing.T) {
 	m := New(IgnoreMissingFields)
 	source := struct {

@@ -219,8 +219,11 @@ func (m Mapper) mapValues(ctx context.Context, destVal, sourceVal reflect.Value)
 			return StructError{errs}
 		}
 		return nil
-	} else if destType == sourceVal.Type() {
+	} else if destType == srcType {
 		destVal.Set(sourceVal)
+		return nil
+	} else if srcType.ConvertibleTo(destType) {
+		destVal.Set(sourceVal.Convert(destType))
 		return nil
 	} else if destType.Kind() == reflect.Ptr {
 		if valueIsNil(sourceVal) {
