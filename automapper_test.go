@@ -431,6 +431,16 @@ func TestExplicitConversionTakesPriority(t *testing.T) {
 	)
 	m.Map(&dest, source)
 	assertEqual(t, dest.Foo, 43)
+
+	// Don't apply conversion for wrong source types
+	source2 := struct {
+		Foo int
+	}{42}
+	dest2 := struct {
+		Foo int
+	}{}
+	m.Map(&dest2, source2)
+	assertEqual(t, dest2.Foo, 42)
 }
 
 type NewIntType int

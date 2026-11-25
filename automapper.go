@@ -173,9 +173,11 @@ func (m *Mapper) Register(dstType, srcType reflect.Type, fn TypeMapper) {
 	})
 }
 
-func (m *Mapper) compatibleConversion(dstType reflect.Type) (reflect.Type, innerTypeMapper, bool) {
+func (m *Mapper) compatibleConversion(
+	dstType, srcType reflect.Type,
+) (reflect.Type, innerTypeMapper, bool) {
 	for k, g := range m.typeMappers {
-		if k.dstType.ConvertibleTo(dstType) {
+		if k.dstType.ConvertibleTo(dstType) && k.srcType == srcType {
 			return k.dstType, g, true
 		}
 	}
@@ -190,7 +192,7 @@ func (m Mapper) mapValues(ctx context.Context, destVal, sourceVal reflect.Value)
 		return m(ctx, destVal, sourceVal)
 	}
 
-	if targetDstType, m, ok := m.compatibleConversion(destType); ok {
+	if targetDstType, m, ok := m.compatibleConversion(destType, srcType); ok {
 		// Is there a compatible conversion, e.g. a string->int conversion, but
 		// the target has `type IntType int` ?
 		v := reflect.New(targetDstType)
